@@ -81,7 +81,11 @@ export default function PlatformAccountsPage() {
   } = useQuery('/publishing-accounts', {
     query: { platform: 'wechat', limit: 200 }
   })
-  const { data: tasksData, isLoading: tasksLoading, refetch: refetchTasks } = useQuery('/publishing-tasks', {
+  const {
+    data: tasksData,
+    isLoading: tasksLoading,
+    refetch: refetchTasks
+  } = useQuery('/publishing-tasks', {
     query: selectedAccountId ? { accountId: selectedAccountId, limit: 20 } : { limit: 20 },
     enabled: selectedAccountId !== null
   })
@@ -412,7 +416,7 @@ export default function PlatformAccountsPage() {
                               <ExternalLink size={13} />
                             </Button>
                           ) : null}
-                          {task.status === 'failed' && !task.appMsgId ? (
+                          {task.status === 'failed' && !task.remoteDraftId ? (
                             <Button
                               type="button"
                               size="icon-sm"

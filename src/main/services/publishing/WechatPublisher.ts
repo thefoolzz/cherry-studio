@@ -1,40 +1,13 @@
 import type { BrowserWindow } from 'electron'
-import MarkdownIt from 'markdown-it'
 
-const markdown = new MarkdownIt({
-  html: false,
-  breaks: true,
-  linkify: true
-})
-
-function normalizeMarkdown(source: string): string {
-  const fenced = source.match(/```(?:markdown|md)\s*\n([\s\S]*?)\n```/i)?.[1]
-  return (fenced ?? source).trim()
-}
-
-export interface WechatDraftImage {
-  id: string
-  name: string
-  mime: string
-  content: string
-}
-
-export interface WechatDraftInput {
-  taskId: string
-  title: string
-  markdown: string
-  images?: WechatDraftImage[]
-}
-
-export interface WechatDraftResult {
-  appMsgId: string
-  editUrl: string
-}
-
-export interface WechatLoginState {
-  loggedIn: boolean
-  accountName?: string
-}
+import type {
+  PlatformDraftImage,
+  PlatformDraftInput,
+  PlatformDraftResult,
+  PlatformLoginState,
+  PlatformPublisher
+} from './PlatformPublisher'
+import { WechatContentRenderer } from './WechatContentRenderer'
 
 type WechatDraftScriptResult = {
   appMsgId?: string
@@ -43,12 +16,20 @@ type WechatDraftScriptResult = {
 }
 
 /** Creates WeChat drafts through the page-authenticated operate_appmsg API. */
-export class WechatPublisher {
-  renderMarkdown(source: string): string {
-    return markdown.render(normalizeMarkdown(source))
+export class WechatPublisher implements PlatformPublisher {
+  readonly platform = 'wechat' as const
+  readonly homeUrl = 'https://mp.weixin.qq.com/'
+  private readonly contentRenderer = new WechatContentRenderer()
+
+  getWindowTitle(displayName: string): string {
+    return `${displayName} · 微信公众号`
   }
 
-  async readLoginState(window: BrowserWindow): Promise<WechatLoginState> {
+  renderMarkdown(source: string): string {
+    return this.contentRenderer.render(source)
+  }
+
+  async readLoginState(window: BrowserWindow): Promise<PlatformLoginState> {
     const value = await window.webContents.executeJavaScript(
       `(() => {
         const readName = () => {
@@ -79,7 +60,7 @@ export class WechatPublisher {
     }
   }
 
-  async createDraft(window: BrowserWindow, input: WechatDraftInput): Promise<WechatDraftResult> {
+  async createDraft(window: BrowserWindow, input: PlatformDraftInput): Promise<PlatformDraftResult> {
     if (window.isDestroyed() || window.webContents.isCrashed()) {
       throw new Error('公众号窗口不可用')
     }
@@ -101,7 +82,7 @@ export class WechatPublisher {
 
     const editUrl = result.editUrl || window.webContents.getURL()
     await window.loadURL(editUrl)
-    return { appMsgId: result.appMsgId, editUrl }
+    return { remoteDraftId: result.appMsgId, editUrl }
   }
 }
 
@@ -110,7 +91,7 @@ async function buildCreateDraftScript(input: {
   taskId: string
   title: string
   html: string
-  images: WechatDraftImage[]
+  images: PlatformDraftImage[]
 }): Promise<WechatDraftScriptResult> {
   type WechatPageInfo = { token: string; nickname: string; ticket: string; userName: string }
   type UploadedImage = { id: string; fileId: number; url: string }
@@ -134,7 +115,7 @@ async function buildCreateDraftScript(input: {
 
   const readInfo = (): WechatPageInfo | null => {
     const common = pageWindow.wx?.commonData
-    const data = (common?.data || common || {}) as Record<string, unknown>
+    const data = common?.data || common || {}
     const token = String(data.t || data.token || new URLSearchParams(location.search).get('token') || '')
     if (!token) return null
     return {
@@ -145,9 +126,9 @@ async function buildCreateDraftScript(input: {
     }
   }
 
-  const imageDataUrl = (image: WechatDraftImage) => `data:${image.mime};base64,${image.content}`
+  const imageDataUrl = (image: PlatformDraftImage) => `data:${image.mime};base64,${image.content}`
 
-  const uploadImage = async (image: WechatDraftImage, info: WechatPageInfo): Promise<UploadedImage> => {
+  const uploadImage = async (image: PlatformDraftImage, info: WechatPageInfo): Promise<UploadedImage> => {
     const binary = atob(image.content)
     const bytes = new Uint8Array(binary.length)
     for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index)
@@ -182,7 +163,7 @@ async function buildCreateDraftScript(input: {
     return { id: image.id, fileId: Number.parseInt(result.content, 10), url: result.cdn_url }
   }
 
-  const readImageSize = (image: WechatDraftImage): Promise<{ width: number; height: number }> =>
+  const readImageSize = (image: PlatformDraftImage): Promise<{ width: number; height: number }> =>
     new Promise((resolve, reject) => {
       const element = new Image()
       element.onload = () => resolve({ width: element.width, height: element.height })
@@ -190,13 +171,7 @@ async function buildCreateDraftScript(input: {
       element.src = imageDataUrl(image)
     })
 
-  const calculateCrop = (
-    ratio: number,
-    label: string,
-    apiRatio: string,
-    width: number,
-    height: number
-  ): CropConfig => {
+  const calculateCrop = (ratio: number, label: string, apiRatio: string, width: number, height: number): CropConfig => {
     let x1 = 0
     let y1 = 0
     let x2 = 1
@@ -226,7 +201,7 @@ async function buildCreateDraftScript(input: {
 
   const cropCover = async (
     source: UploadedImage,
-    image: WechatDraftImage,
+    image: PlatformDraftImage,
     token: string
   ): Promise<CroppedImage[]> => {
     const { width, height } = await readImageSize(image)
@@ -265,11 +240,7 @@ async function buildCreateDraftScript(input: {
     }))
   }
 
-  const createArticle = async (
-    info: WechatPageInfo,
-    html: string,
-    coverImages: CroppedImage[]
-  ): Promise<string> => {
+  const createArticle = async (info: WechatPageInfo, html: string, coverImages: CroppedImage[]): Promise<string> => {
     const formData = new FormData()
     formData.append('token', info.token)
     formData.append('lang', 'zh_CN')
@@ -409,7 +380,9 @@ async function buildCreateDraftScript(input: {
 
     const firstReferencedId = input.html.match(/attachment:\/\/([\w.-]+)/)?.[1]
     const coverSource = firstReferencedId ? uploadedById.get(firstReferencedId) : uploaded[0]
-    const coverImage = firstReferencedId ? input.images.find((image) => image.id === firstReferencedId) : input.images[0]
+    const coverImage = firstReferencedId
+      ? input.images.find((image) => image.id === firstReferencedId)
+      : input.images[0]
     const coverImages = coverSource && coverImage ? await cropCover(coverSource, coverImage, info.token) : []
     const appMsgId = await createArticle(info, html, coverImages)
     const editUrl = new URL('https://mp.weixin.qq.com/cgi-bin/appmsg')

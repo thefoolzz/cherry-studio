@@ -712,6 +712,8 @@
   "chat.publishing.dialog.bind_account": "前往綁定帳號",
   "chat.publishing.dialog.description": "文章會建立為微信公眾號草稿，不會直接群發。",
   "chat.publishing.dialog.no_accounts": "還沒有已就緒的公眾號帳號",
+  "chat.publishing.dialog.pending_facts": "發布前檢查（{{count}}）",
+  "chat.publishing.dialog.pending_facts_description": "這些資訊不會寫入正文，也不會阻止建立草稿。",
   "chat.publishing.dialog.submit": "建立草稿",
   "chat.publishing.dialog.title": "選擇發布帳號",
   "chat.publishing.failed": "微信公眾號草稿建立失敗",

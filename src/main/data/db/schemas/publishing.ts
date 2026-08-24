@@ -39,7 +39,7 @@ export const publishingTaskTable = sqliteTable(
     imageFileEntryIds: text('image_file_entry_ids', { mode: 'json' }).$type<string[]>().notNull().default(sql`'[]'`),
     coverFileEntryId: text('cover_file_entry_id').references(() => fileEntryTable.id, { onDelete: 'set null' }),
     status: text().notNull().default('prepared'),
-    appMsgId: text('app_msg_id'),
+    remoteDraftId: text('remote_draft_id'),
     editUrl: text('edit_url'),
     error: text(),
     ...createUpdateTimestamps

@@ -16,7 +16,8 @@ import { ipcApi } from '@renderer/ipc'
 import { openRoute } from '@renderer/services/mainWindowNavigation'
 import { toast } from '@renderer/services/toast'
 import type { PublishingAccount } from '@shared/data/types/publishing'
-import { Send } from 'lucide-react'
+import { parsePublishingContentDraft } from '@shared/utils/publishing'
+import { CircleAlert, Send } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -25,7 +26,7 @@ const EMPTY_ACCOUNTS: readonly PublishingAccount[] = Object.freeze([])
 
 function extractArticleTitle(markdown: string, fallback: string, defaultTitle: string): string {
   const heading = markdown.match(/^\s{0,3}#\s+(.+?)\s*$/m)?.[1]
-  if (heading?.trim()) return heading.replace(/[\*_`]/g, '').trim().slice(0, 120)
+  if (heading?.trim()) return heading.replace(/[*_`]/g, '').trim().slice(0, 120)
 
   const firstLine = markdown
     .split('\n')
@@ -40,11 +41,6 @@ interface PublishingDraftActionProps {
   imageFileIds?: string[]
 }
 
-function normalizePublishingMarkdown(markdown: string): string {
-  const fenced = markdown.match(/```(?:markdown|md)\s*\n([\s\S]*?)\n```/i)?.[1]
-  return (fenced ?? markdown).trim()
-}
-
 export function PublishingDraftAction({ markdown, topicName, imageFileIds = [] }: PublishingDraftActionProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -55,6 +51,7 @@ export function PublishingDraftAction({ markdown, topicName, imageFileIds = [] }
   const { data, isLoading } = useQuery('/publishing-accounts', {
     query: { platform: 'wechat', status: 'ready', limit: 200 }
   })
+  const contentDraft = useMemo(() => parsePublishingContentDraft(markdown), [markdown])
   const accounts = data?.items ?? EMPTY_ACCOUNTS
   const selectedAccount = useMemo(
     () => accounts.find((account) => account.id === selectedAccountId),
@@ -62,23 +59,25 @@ export function PublishingDraftAction({ markdown, topicName, imageFileIds = [] }
   )
 
   const handleOpen = useCallback(() => {
-    setTitle(extractArticleTitle(normalizePublishingMarkdown(markdown), topicName, t('chat.publishing.default_title')))
+    setTitle(
+      contentDraft.title ?? extractArticleTitle(contentDraft.markdown, topicName, t('chat.publishing.default_title'))
+    )
     setSelectedAccountId(accounts[0]?.id ?? '')
     setOpen(true)
-  }, [accounts, markdown, t, topicName])
+  }, [accounts, contentDraft, t, topicName])
 
   const handlePublish = useCallback(async () => {
     if (!selectedAccount || !title.trim()) return
 
     setBusy(true)
     try {
-      const prepared = await ipcApi.request('publishing.prepare_wechat_draft', {
+      const prepared = await ipcApi.request('publishing.prepare_draft', {
         accountId: selectedAccount.id,
         title: title.trim(),
-        markdown: normalizePublishingMarkdown(markdown),
+        markdown: contentDraft.markdown,
         ...(imageFileIds.length > 0 ? { bodyImageFileIds: imageFileIds } : {})
       })
-      const task = await ipcApi.request('publishing.create_wechat_draft', { taskId: prepared.id })
+      const task = await ipcApi.request('publishing.create_draft', { taskId: prepared.id })
       if (task.status !== 'created') {
         throw new Error(task.error ?? t('chat.publishing.failed'))
       }
@@ -92,9 +91,9 @@ export function PublishingDraftAction({ markdown, topicName, imageFileIds = [] }
     } finally {
       setBusy(false)
     }
-  }, [imageFileIds, markdown, selectedAccount, title, t])
+  }, [contentDraft.markdown, imageFileIds, selectedAccount, title, t])
 
-  if (published || markdown.trim().length < 20) return null
+  if (published || contentDraft.markdown.length < 20) return null
 
   return (
     <>
@@ -154,6 +153,23 @@ export function PublishingDraftAction({ markdown, topicName, imageFileIds = [] }
                 </RadioGroup>
               )}
             </div>
+
+            {contentDraft.pendingFacts.length > 0 && (
+              <div className="grid gap-2 border-warning-border border-l-2 pl-3">
+                <div className="flex items-center gap-2 font-medium text-sm">
+                  <CircleAlert aria-hidden className="size-4 shrink-0 text-warning" />
+                  <span>{t('chat.publishing.dialog.pending_facts', { count: contentDraft.pendingFacts.length })}</span>
+                </div>
+                <p className="text-muted-foreground text-xs">{t('chat.publishing.dialog.pending_facts_description')}</p>
+                <ul className="grid gap-1 pl-5 text-sm">
+                  {contentDraft.pendingFacts.map((fact) => (
+                    <li key={fact} className="list-disc">
+                      {fact}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <DialogFooter>

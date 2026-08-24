@@ -712,6 +712,8 @@
   "chat.publishing.dialog.bind_account": "Bind account",
   "chat.publishing.dialog.description": "The article will be created as a WeChat draft and will not be sent to followers.",
   "chat.publishing.dialog.no_accounts": "No ready WeChat Official Account is available",
+  "chat.publishing.dialog.pending_facts": "公開前の確認事項（{{count}}）",
+  "chat.publishing.dialog.pending_facts_description": "これらの項目は記事本文には含まれず、下書きの作成を妨げません。",
   "chat.publishing.dialog.submit": "Create draft",
   "chat.publishing.dialog.title": "Choose a publishing account",
   "chat.publishing.failed": "Failed to create the WeChat draft",

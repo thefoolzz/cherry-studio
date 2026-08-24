@@ -48,7 +48,7 @@ export const PublishingTaskSchema = z.strictObject({
   imageFileEntryIds: z.array(FileEntryIdSchema),
   coverFileEntryId: FileEntryIdSchema.optional(),
   status: PublishingTaskStatusSchema,
-  appMsgId: z.string().min(1).optional(),
+  remoteDraftId: z.string().min(1).optional(),
   editUrl: z.string().url().optional(),
   error: z.string().min(1).optional(),
   createdAt: z.iso.datetime(),

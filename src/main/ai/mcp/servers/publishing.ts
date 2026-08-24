@@ -40,8 +40,8 @@ const TOOLS: Tool[] = [
     inputSchema: { type: 'object', properties: { accountId: { type: 'string' } }, required: ['accountId'] }
   },
   {
-    name: 'prepare_wechat_draft',
-    description: 'Persist a Markdown snapshot as a prepared WeChat draft task.',
+    name: 'prepare_draft',
+    description: 'Persist a platform-neutral Markdown snapshot as a prepared draft task for the selected account.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -55,8 +55,8 @@ const TOOLS: Tool[] = [
     }
   },
   {
-    name: 'create_wechat_draft',
-    description: 'Create the prepared task as a WeChat Official Account draft. This is an approval-gated action.',
+    name: 'create_draft',
+    description: 'Create the prepared task as a platform draft. This is an approval-gated action.',
     inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] }
   },
   {
@@ -71,7 +71,7 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'retry_publish_task',
-    description: 'Retry a failed task that has not produced an appMsgId. This is an approval-gated action.',
+    description: 'Retry a failed task that has not produced a remote draft ID. This is an approval-gated action.',
     inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] }
   },
   {
@@ -99,7 +99,7 @@ function taskView(task: PublishingTask) {
     characterCount: task.markdown.length,
     mediaCount: task.imageFileEntryIds.length + (task.coverFileEntryId ? 1 : 0),
     status: task.status,
-    appMsgId: task.appMsgId,
+    remoteDraftId: task.remoteDraftId,
     editUrl: task.editUrl,
     error: task.error
   }
@@ -142,9 +142,9 @@ export class PublishingServer {
             const account = await service.getAccountStatus(input.accountId)
             return result({ success: true, ...accountView(account) })
           }
-          case 'prepare_wechat_draft': {
+          case 'prepare_draft': {
             const input = PREPARE_SCHEMA.parse(args)
-            const task = service.prepareWechatDraft({
+            const task = service.prepareDraft({
               accountId: input.accountId,
               title: input.title,
               markdown: input.markdown,
@@ -153,9 +153,9 @@ export class PublishingServer {
             })
             return result({ success: true, ...taskView(task) })
           }
-          case 'create_wechat_draft': {
+          case 'create_draft': {
             const input = TASK_ID_SCHEMA.parse(args)
-            const task = await service.createWechatDraft(input.taskId)
+            const task = await service.createDraft(input.taskId)
             return result({ success: task.status === 'created', ...taskView(task) })
           }
           case 'get_publish_task': {

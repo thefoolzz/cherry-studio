@@ -10,9 +10,9 @@ export const publishingHandlers: IpcHandlersFor<typeof publishingRequestSchemas>
     Promise.resolve(application.get('PublishingService').renameAccount(accountId, displayName)),
   'publishing.delete_account': ({ accountId }) => application.get('PublishingService').deleteAccount(accountId),
   'publishing.get_account_status': ({ accountId }) => application.get('PublishingService').getAccountStatus(accountId),
-  'publishing.prepare_wechat_draft': ({ accountId, title, markdown, bodyImageFileIds, coverFileId }) =>
+  'publishing.prepare_draft': ({ accountId, title, markdown, bodyImageFileIds, coverFileId }) =>
     Promise.resolve(
-      application.get('PublishingService').prepareWechatDraft({
+      application.get('PublishingService').prepareDraft({
         accountId,
         title,
         markdown,
@@ -20,7 +20,7 @@ export const publishingHandlers: IpcHandlersFor<typeof publishingRequestSchemas>
         coverFileEntryId: coverFileId
       })
     ),
-  'publishing.create_wechat_draft': ({ taskId }) => application.get('PublishingService').createWechatDraft(taskId),
+  'publishing.create_draft': ({ taskId }) => application.get('PublishingService').createDraft(taskId),
   'publishing.retry_publish_task': ({ taskId }) => application.get('PublishingService').retryPublishTask(taskId),
   'publishing.cancel_publish_task': ({ taskId }) =>
     Promise.resolve(application.get('PublishingService').cancelPublishTask(taskId)),

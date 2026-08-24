@@ -1,4 +1,4 @@
-import { type PublishingAccount,PublishingAccountSchema, PublishingTaskSchema } from '@shared/data/types/publishing'
+import { type PublishingAccount, PublishingAccountSchema, PublishingTaskSchema } from '@shared/data/types/publishing'
 import * as z from 'zod'
 
 import { defineRoute } from '../define'
@@ -30,7 +30,7 @@ export const publishingRequestSchemas = {
     input: z.strictObject({ accountId }),
     output: PublishingAccountSchema
   }),
-  'publishing.prepare_wechat_draft': defineRoute({
+  'publishing.prepare_draft': defineRoute({
     input: z.strictObject({
       accountId,
       title: z.string().trim().min(1).max(255),
@@ -40,7 +40,7 @@ export const publishingRequestSchemas = {
     }),
     output: PublishingTaskSchema
   }),
-  'publishing.create_wechat_draft': defineRoute({
+  'publishing.create_draft': defineRoute({
     input: z.strictObject({ taskId }),
     output: PublishingTaskSchema
   }),

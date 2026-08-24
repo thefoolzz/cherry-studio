@@ -54,7 +54,7 @@ export const UpdatePublishingTaskSchema = z
     imageFileEntryIds: z.array(FileEntryIdSchema).max(100).optional(),
     coverFileEntryId: FileEntryIdSchema.nullable().optional(),
     status: PublishingTaskStatusSchema.optional(),
-    appMsgId: z.string().trim().min(1).nullable().optional(),
+    remoteDraftId: z.string().trim().min(1).nullable().optional(),
     editUrl: z.string().url().nullable().optional(),
     error: z.string().trim().min(1).nullable().optional()
   })

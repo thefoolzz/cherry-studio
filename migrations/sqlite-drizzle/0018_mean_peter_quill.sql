@@ -1,0 +1,1 @@
+ALTER TABLE `publishing_task` RENAME COLUMN "app_msg_id" TO "remote_draft_id";

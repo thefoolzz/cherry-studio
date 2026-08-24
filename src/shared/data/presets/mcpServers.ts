@@ -163,12 +163,7 @@ export const PRESET_MCP_SERVERS = freezePresets([
     name: BuiltinMcpServerNames.publishing,
     type: 'inMemory',
     isActive: true,
-    disabledAutoApproveTools: [
-      'start_account_binding',
-      'create_wechat_draft',
-      'retry_publish_task',
-      'cancel_publish_task'
-    ],
+    disabledAutoApproveTools: ['start_account_binding', 'create_draft', 'retry_publish_task', 'cancel_publish_task'],
     provider: 'Post Studio',
     installSource: 'builtin',
     isTrusted: true

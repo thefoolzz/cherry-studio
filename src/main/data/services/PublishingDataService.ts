@@ -58,7 +58,7 @@ function rowToTask(row: typeof publishingTaskTable.$inferSelect): PublishingTask
     imageFileEntryIds: row.imageFileEntryIds,
     coverFileEntryId: clean.coverFileEntryId,
     status: PublishingTaskStatusSchema.parse(row.status),
-    appMsgId: clean.appMsgId,
+    remoteDraftId: clean.remoteDraftId,
     editUrl: clean.editUrl,
     error: clean.error,
     createdAt: timestampToISO(row.createdAt),
@@ -207,7 +207,7 @@ export class PublishingDataService {
     if (dto.imageFileEntryIds !== undefined) updates.imageFileEntryIds = dto.imageFileEntryIds
     if (dto.coverFileEntryId !== undefined) updates.coverFileEntryId = dto.coverFileEntryId
     if (dto.status !== undefined) updates.status = dto.status
-    if (dto.appMsgId !== undefined) updates.appMsgId = dto.appMsgId
+    if (dto.remoteDraftId !== undefined) updates.remoteDraftId = dto.remoteDraftId
     if (dto.editUrl !== undefined) updates.editUrl = dto.editUrl
     if (dto.error !== undefined) updates.error = dto.error
     if (Object.keys(updates).length === 0) return this.getTask(id)

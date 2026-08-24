@@ -7,14 +7,14 @@ import { loggerService } from '@logger'
 import { BaseService, DependsOn, Injectable, Phase, ServicePhase } from '@main/core/lifecycle'
 import { WindowType } from '@main/core/window/types'
 import type { CreatePublishingTaskDto, UpdatePublishingTaskDto } from '@shared/data/api/schemas/publishing'
-import type { PublishingAccount, PublishingTask } from '@shared/data/types/publishing'
+import type { PublishingAccount, PublishingPlatform, PublishingTask } from '@shared/data/types/publishing'
 import type { BrowserWindow } from 'electron'
 import { session } from 'electron'
 
+import type { PlatformPublisher } from './PlatformPublisher'
 import { WechatPublisher } from './WechatPublisher'
 
 const logger = loggerService.withContext('PublishingService')
-const WECHAT_HOME_URL = 'https://mp.weixin.qq.com/'
 
 type AccountWindow = {
   accountId: string
@@ -29,7 +29,9 @@ type AccountWindow = {
 @DependsOn(['WindowManager'])
 @ServicePhase(Phase.WhenReady)
 export class PublishingService extends BaseService {
-  private readonly publisher = new WechatPublisher()
+  private readonly publishers: Record<PublishingPlatform, PlatformPublisher> = {
+    wechat: new WechatPublisher()
+  }
   private readonly windows = new Map<string, AccountWindow>()
   private readonly accountByWindowId = new Map<string, string>()
   private readonly inFlightTasks = new Map<string, Promise<PublishingTask>>()
@@ -126,7 +128,7 @@ export class PublishingService extends BaseService {
     return this.refreshAccountFromWindow(account, window)
   }
 
-  prepareWechatDraft(
+  prepareDraft(
     input: Omit<CreatePublishingTaskDto, 'imageFileEntryIds'> & { bodyImageFileIds?: string[] }
   ): PublishingTask {
     const account = publishingDataService.getAccount(input.accountId)
@@ -144,15 +146,15 @@ export class PublishingService extends BaseService {
     return task
   }
 
-  async createWechatDraft(taskId: string): Promise<PublishingTask> {
+  async createDraft(taskId: string): Promise<PublishingTask> {
     const current = publishingDataService.getTask(taskId)
-    if (current.status === 'created' && current.appMsgId) return current
+    if (current.status === 'created' && current.remoteDraftId) return current
     if (current.status === 'cancelled') throw new Error('任务已取消')
 
     const existing = this.inFlightTasks.get(taskId)
     if (existing) return existing
 
-    const operation = this.createWechatDraftInternal(current)
+    const operation = this.createDraftInternal(current)
     this.inFlightTasks.set(taskId, operation)
     try {
       return await operation
@@ -163,12 +165,12 @@ export class PublishingService extends BaseService {
 
   async retryPublishTask(taskId: string): Promise<PublishingTask> {
     const task = publishingDataService.getTask(taskId)
-    if (task.status !== 'failed' || task.appMsgId) {
+    if (task.status !== 'failed' || task.remoteDraftId) {
       throw new Error('只有未创建草稿的失败任务可以重试')
     }
     const reset = publishingDataService.updateTask(taskId, { status: 'prepared', error: null })
     this.broadcastTask(reset)
-    return this.createWechatDraft(taskId)
+    return this.createDraft(taskId)
   }
 
   cancelPublishTask(taskId: string): PublishingTask {
@@ -197,14 +199,15 @@ export class PublishingService extends BaseService {
     return task
   }
 
-  private async createWechatDraftInternal(task: PublishingTask): Promise<PublishingTask> {
+  private async createDraftInternal(task: PublishingTask): Promise<PublishingTask> {
     const account = publishingDataService.getAccount(task.accountId)
+    const publisher = this.publishers[account.platform]
     let current = this.transitionTask(task.id, 'opening', null)
     try {
       const window = await this.openAccountWindow(account)
       const verified = await this.refreshAccountFromWindow(account, window)
       if (verified.status !== 'ready') {
-        throw new Error('公众号登录状态已过期，请重新登录')
+        throw new Error('账号登录状态已过期，请重新登录')
       }
 
       const latest = publishingDataService.getTask(task.id)
@@ -216,14 +219,13 @@ export class PublishingService extends BaseService {
         task.imageFileEntryIds.map(async (id) => {
           const entry = fileEntryService.getById(id)
           const file = await fileManager.read(id, { encoding: 'base64' })
-          const name = entry.ext && !entry.name.toLowerCase().endsWith(`.${entry.ext}`)
-            ? `${entry.name}.${entry.ext}`
-            : entry.name
+          const name =
+            entry.ext && !entry.name.toLowerCase().endsWith(`.${entry.ext}`) ? `${entry.name}.${entry.ext}` : entry.name
           return { id, name, mime: file.mime, content: file.content }
         })
       )
       current = this.transitionTask(task.id, 'creating', null)
-      const result = await this.publisher.createDraft(window, {
+      const result = await publisher.createDraft(window, {
         taskId: task.id,
         title: task.title,
         markdown: task.markdown,
@@ -231,7 +233,7 @@ export class PublishingService extends BaseService {
       })
       current = publishingDataService.updateTask(task.id, {
         status: 'created',
-        appMsgId: result.appMsgId,
+        remoteDraftId: result.remoteDraftId,
         editUrl: result.editUrl,
         error: null
       })
@@ -241,7 +243,7 @@ export class PublishingService extends BaseService {
       const message = error instanceof Error ? error.message : String(error)
       const failed = publishingDataService.updateTask(task.id, { status: 'failed', error: message })
       this.broadcastTask(failed)
-      logger.warn('WeChat draft creation failed', { taskId: task.id, error: message })
+      logger.warn('Draft creation failed', { taskId: task.id, platform: account.platform, error: message })
       return failed
     }
   }
@@ -253,6 +255,7 @@ export class PublishingService extends BaseService {
   }
 
   private async openAccountWindow(account: PublishingAccount): Promise<BrowserWindow> {
+    const publisher = this.publishers[account.platform]
     const existing = this.getAccountWindow(account.id)
     if (existing && !existing.isDestroyed()) {
       if (!existing.isVisible()) existing.show()
@@ -263,7 +266,7 @@ export class PublishingService extends BaseService {
     const wm = application.get('WindowManager')
     const windowId = wm.open(WindowType.PublishingAccount, {
       options: {
-        title: `${account.displayName} · 微信公众号`,
+        title: publisher.getWindowTitle(account.displayName),
         webPreferences: { partition: account.partition }
       }
     })
@@ -271,7 +274,7 @@ export class PublishingService extends BaseService {
     if (!window) throw new Error('无法打开公众号登录窗口')
     this.windows.set(account.id, { accountId: account.id, windowId })
     this.accountByWindowId.set(windowId, account.id)
-    await window.loadURL(WECHAT_HOME_URL)
+    await window.loadURL(publisher.homeUrl)
     if (!window.isVisible()) window.show()
     window.focus()
     return window
@@ -299,7 +302,7 @@ export class PublishingService extends BaseService {
     account: PublishingAccount,
     window: BrowserWindow
   ): Promise<PublishingAccount> {
-    const state = await this.publisher.readLoginState(window)
+    const state = await this.publishers[account.platform].readLoginState(window)
     const nextStatus = state.loggedIn ? 'ready' : account.status === 'binding' ? 'binding' : 'expired'
     const next = publishingDataService.updateAccount(account.id, {
       ...(state.loggedIn && state.accountName && state.accountName !== account.displayName

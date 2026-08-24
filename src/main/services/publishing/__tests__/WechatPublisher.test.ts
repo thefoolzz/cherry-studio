@@ -7,8 +7,8 @@ describe('WechatPublisher.renderMarkdown', () => {
   it('renders Markdown while escaping raw HTML and preserving links', () => {
     const html = new WechatPublisher().renderMarkdown('<script>alert(1)</script>\n\n[Docs](https://example.com)')
 
-    expect(html).toContain('<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>')
-    expect(html).toContain('<a href="https://example.com">Docs</a>')
+    expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;')
+    expect(html).toContain('<a href="https://example.com"')
   })
 
   it('converts single line breaks into HTML breaks for editor readability', () => {
@@ -20,7 +20,26 @@ describe('WechatPublisher.renderMarkdown', () => {
   it('keeps generated image attachment ids in the rendered article', () => {
     const html = new WechatPublisher().renderMarkdown('![封面](attachment://image-1)')
 
-    expect(html).toContain('<img src="attachment://image-1" alt="封面">')
+    expect(html).toContain('<img src="attachment://image-1" alt="封面"')
+    expect(html).toContain('<figcaption')
+    expect(html).not.toContain('<p style=')
+  })
+
+  it('removes the duplicate title and pre-publish checklist from the platform body', () => {
+    const html = new WechatPublisher().renderMarkdown(`
+# 秋日手冲体验
+
+从一杯咖啡开始认识风味。
+
+## 发布前检查
+
+- 活动日期
+`)
+
+    expect(html).not.toContain('秋日手冲体验')
+    expect(html).not.toContain('发布前检查')
+    expect(html).not.toContain('活动日期')
+    expect(html).toContain('font-size:16px')
   })
 })
 
@@ -50,6 +69,6 @@ describe('WechatPublisher.createDraft', () => {
 
     expect(executeJavaScript.mock.calls[0][0]).toContain('operate_appmsg')
     expect(loadURL).toHaveBeenCalledWith(result.editUrl)
-    expect(result.appMsgId).toBe('draft-1')
+    expect(result.remoteDraftId).toBe('draft-1')
   })
 })

@@ -712,6 +712,8 @@
   "chat.publishing.dialog.bind_account": "去绑定账号",
   "chat.publishing.dialog.description": "文章会创建为微信公众号草稿，不会直接群发。",
   "chat.publishing.dialog.no_accounts": "还没有已就绪的公众号账号",
+  "chat.publishing.dialog.pending_facts": "发布前检查（{{count}}）",
+  "chat.publishing.dialog.pending_facts_description": "这些信息不会写入正文，也不会阻止创建草稿。",
   "chat.publishing.dialog.submit": "创建草稿",
   "chat.publishing.dialog.title": "选择发布账号",
   "chat.publishing.failed": "微信公众号草稿创建失败",
