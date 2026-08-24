@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as PlatformAccountsRouteImport } from './routes/platform-accounts'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as SettingsWebsearchRouteImport } from './routes/settings/websearch'
@@ -65,6 +66,11 @@ import { Route as SettingsMcpSettingsServerIdRouteImport } from './routes/settin
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlatformAccountsRoute = PlatformAccountsRouteImport.update({
+  id: '/platform-accounts',
+  path: '/platform-accounts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -329,6 +335,7 @@ const SettingsMcpSettingsServerIdRoute =
 
 export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
+  '/platform-accounts': typeof PlatformAccountsRoute
   '/settings': typeof SettingsRouteWithChildren
   '/app/agents': typeof AppAgentsRoute
   '/app/chat': typeof AppChatRoute
@@ -383,6 +390,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/app': typeof AppRouteWithChildren
+  '/platform-accounts': typeof PlatformAccountsRoute
   '/app/agents': typeof AppAgentsRoute
   '/app/chat': typeof AppChatRoute
   '/app/code': typeof AppCodeRoute
@@ -435,6 +443,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/app': typeof AppRouteWithChildren
+  '/platform-accounts': typeof PlatformAccountsRoute
   '/settings': typeof SettingsRouteWithChildren
   '/app/agents': typeof AppAgentsRoute
   '/app/chat': typeof AppChatRoute
@@ -491,6 +500,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/app'
+    | '/platform-accounts'
     | '/settings'
     | '/app/agents'
     | '/app/chat'
@@ -545,6 +555,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/app'
+    | '/platform-accounts'
     | '/app/agents'
     | '/app/chat'
     | '/app/code'
@@ -596,6 +607,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/app'
+    | '/platform-accounts'
     | '/settings'
     | '/app/agents'
     | '/app/chat'
@@ -651,6 +663,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  PlatformAccountsRoute: typeof PlatformAccountsRoute
   SettingsRoute: typeof SettingsRouteWithChildren
 }
 
@@ -661,6 +674,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/platform-accounts': {
+      id: '/platform-accounts'
+      path: '/platform-accounts'
+      fullPath: '/platform-accounts'
+      preLoaderRoute: typeof PlatformAccountsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -1165,6 +1185,7 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  PlatformAccountsRoute: PlatformAccountsRoute,
   SettingsRoute: SettingsRouteWithChildren,
 }
 export const routeTree = rootRouteImport

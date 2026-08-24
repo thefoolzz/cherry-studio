@@ -23,6 +23,7 @@ import {
   providerLogoFileRefTable,
   translateHistoryFileRefTable
 } from '@data/db/schemas/fileRelations'
+import { publishingTaskTable } from '@data/db/schemas/publishing'
 import type { DbOrTx } from '@data/db/types'
 import type { FileEntryId, FileRef, FileRefSourceType } from '@shared/data/types/file'
 import {
@@ -35,7 +36,7 @@ import {
   providerLogoRef,
   translateHistorySourceType
 } from '@shared/data/types/file'
-import { asc, count, eq, inArray } from 'drizzle-orm'
+import { asc, count, eq, inArray, sql } from 'drizzle-orm'
 
 export interface FileRefSourceKey {
   readonly sourceType: FileRefSourceType
@@ -317,6 +318,27 @@ class FileRefServiceImpl implements FileRefService {
       for (const rows of rowGroups) {
         for (const row of rows) add(row.entryId, row.refCount)
       }
+
+      const coverRows = this.getDb()
+        .select({ entryId: publishingTaskTable.coverFileEntryId, refCount: count() })
+        .from(publishingTaskTable)
+        .where(inArray(publishingTaskTable.coverFileEntryId, chunk))
+        .groupBy(publishingTaskTable.coverFileEntryId)
+        .all()
+      for (const row of coverRows) {
+        if (row.entryId) add(row.entryId, row.refCount)
+      }
+
+      const bodyRows = this.getDb().all(sql`
+        SELECT image_ref.value AS "entryId", count(*) AS "refCount"
+        FROM ${publishingTaskTable}, json_each(${publishingTaskTable.imageFileEntryIds}) AS image_ref
+        WHERE image_ref.value IN (${sql.join(
+          chunk.map((id) => sql`${id}`),
+          sql`, `
+        )})
+        GROUP BY image_ref.value
+      `) as Array<{ entryId: FileEntryId; refCount: number }>
+      for (const row of bodyRows) add(row.entryId, row.refCount)
     }
 
     return counts
@@ -328,6 +350,18 @@ class FileRefServiceImpl implements FileRefService {
       const rows = tx.select({ c: count() }).from(table).where(eq(table.fileEntryId, id)).all()
       total += rows[0]?.c ?? 0
     }
+    const coverRows = tx
+      .select({ c: count() })
+      .from(publishingTaskTable)
+      .where(eq(publishingTaskTable.coverFileEntryId, id))
+      .all()
+    total += coverRows[0]?.c ?? 0
+    const bodyRows = tx.all(sql`
+      SELECT count(*) AS "count"
+      FROM ${publishingTaskTable}, json_each(${publishingTaskTable.imageFileEntryIds}) AS image_ref
+      WHERE image_ref.value = ${id}
+    `) as Array<{ count: number }>
+    total += bodyRows[0]?.count ?? 0
     return total
   }
 }

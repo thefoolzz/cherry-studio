@@ -18,6 +18,7 @@ export interface SidebarProps {
   width: number
   setWidth: (width: number) => void
   entries: ResolvedSidebarEntry[]
+  fixedEntries?: ResolvedSidebarEntry[]
   active: SidebarActiveState
   title?: string
   logo?: React.ReactNode
@@ -38,6 +39,7 @@ export function Sidebar({
   width,
   setWidth,
   entries,
+  fixedEntries = [],
   active,
   title = '',
   logo,
@@ -128,6 +130,7 @@ export function Sidebar({
 
   const listProps = {
     entries,
+    fixedEntries,
     active,
     onReorder: onEntriesReorder,
     onContextMenuOpenChange: handleContextMenuOpenChange

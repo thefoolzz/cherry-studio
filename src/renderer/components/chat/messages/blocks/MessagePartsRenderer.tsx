@@ -21,6 +21,7 @@ import { useIsActiveTurnTarget } from '@renderer/hooks/useIsActiveTurnTarget'
 import { useTopicStreamStatus } from '@renderer/hooks/useTopicStreamStatus'
 import { FILE_TYPE } from '@renderer/types/file'
 import type { Citation } from '@renderer/types/message'
+import { blobToDataUrl, getImageBlobFromSource } from '@renderer/utils/image'
 import {
   type MessageCitations,
   resolveCitationMarkerParts,
@@ -34,14 +35,16 @@ import {
   convertReferencesToCitationReferences,
   convertReferencesToCitations
 } from '@renderer/utils/partsToBlocks'
+import { generateImageOutputSchema } from '@shared/ai/builtinTools'
 import type { CompactionAnchorData } from '@shared/ai/compaction'
 import { classifyTurn } from '@shared/ai/transport'
 import type { CherryMessagePart, ContentReference, ReasoningUIPart } from '@shared/data/types/message'
 import type { CherryProviderMetadata, ComposerMessageSnapshot, ComposerMessageToken } from '@shared/data/types/uiParts'
 import { readCherryMeta } from '@shared/data/types/uiParts'
+import { toSafeFileUrl } from '@shared/utils/file'
 import { getToolName, isDataUIPart, isFileUIPart, isToolUIPart } from 'ai'
 import { AnimatePresence, motion, type Variants } from 'motion/react'
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 
 import MessageAttachments from '../frame/MessageAttachments'
 import ChatMarkdown, { type InlineHtmlPreviewMode } from '../markdown/ChatMarkdown'
@@ -197,6 +200,12 @@ function extractImageUrl(part: CherryMessagePart): string | undefined {
   return filePart.url || undefined
 }
 
+function getGeneratedImageIds(part: CherryMessagePart): string[] {
+  if (!isToolUIPart(part) || part.state !== 'output-available' || getToolName(part) !== 'generate_image') return []
+  const parsed = generateImageOutputSchema.safeParse((part as { output?: unknown }).output)
+  return parsed.success ? parsed.data.map((image) => image.id) : []
+}
+
 /** Get video filePath from a data-video part. */
 function getVideoFilePath(part: CherryMessagePart): string | undefined {
   if (isDataUIPart(part) && part.type === 'data-video') {
@@ -218,6 +227,7 @@ interface RenderGroupedEntryOptions {
   messageCitations?: MessageCitations
   citationProjectionByPart?: ReadonlyMap<CherryMessagePart, ResolvedCitationMarkers>
   readOnlyFilePreviews?: ReadonlyMap<string, ReadOnlyComposerFileTokenPreview>
+  attachmentFileUrls?: ReadonlyMap<string, string>
   onTextPlayoutSettledChange?: (partId: string, settled: boolean) => void
   onTextPartExpandedChange?: (partId: string, expanded: boolean) => void
   reasoningDisplay?: 'content' | 'disclosure'
@@ -587,6 +597,7 @@ function renderPart(
           role={message.role}
           composer={cherryMeta?.composer}
           readOnlyFilePreviews={options?.readOnlyFilePreviews}
+          attachmentFileUrls={options?.attachmentFileUrls}
           userContentExpanded={message.role === 'user' ? options?.expandedTextPartIds?.has(partId) : undefined}
           onPlayoutSettledChange={options?.onTextPlayoutSettledChange}
           onUserContentExpandedChange={
@@ -1405,9 +1416,23 @@ const MessagePartsRendererContent = React.memo(function MessagePartsRendererCont
     })
   }, [])
 
+  const embeddedAttachmentFileIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const part of messageParts) {
+      if (part.type !== 'text') continue
+      for (const match of part.text.matchAll(/attachment:\/\/([\w.-]+)/g)) ids.add(match[1])
+    }
+    return ids
+  }, [messageParts])
   const partEntries = useMemo(
-    () => messageParts.flatMap((part, index) => (hasPartParentToolCallId(part) ? [] : [{ part, index }])),
-    [messageParts]
+    () =>
+      messageParts.flatMap((part, index) => {
+        if (hasPartParentToolCallId(part)) return []
+        const imageIds = getGeneratedImageIds(part)
+        if (imageIds.length > 0 && imageIds.every((id) => embeddedAttachmentFileIds.has(id))) return []
+        return [{ part, index }]
+      }),
+    [embeddedAttachmentFileIds, messageParts]
   )
   const placeholderStatus = useMemo(() => getProcessingPlaceholderStatus(partEntries), [partEntries])
   const nextReportArtifactToolResponses = useMemo(
@@ -1427,6 +1452,38 @@ const MessagePartsRendererContent = React.memo(function MessagePartsRendererCont
   )
   const nextReadOnlyFilePreviews = useMemo(() => getReadOnlyFileTokenPreviews(messageParts), [messageParts])
   const readOnlyFilePreviews = useStableReadOnlyFilePreviews(nextReadOnlyFilePreviews)
+  const generatedImageIds = useMemo(() => {
+    const ids = new Set(embeddedAttachmentFileIds)
+    for (const part of messageParts) for (const id of getGeneratedImageIds(part)) ids.add(id)
+    return [...ids]
+  }, [embeddedAttachmentFileIds, messageParts])
+  const [attachmentFileUrls, setAttachmentFileUrls] = useState<ReadonlyMap<string, string>>(new Map())
+  useEffect(() => {
+    if (generatedImageIds.length === 0) {
+      setAttachmentFileUrls((current) => (current.size === 0 ? current : new Map()))
+      return
+    }
+
+    let cancelled = false
+    void Promise.all(
+      generatedImageIds.map(async (id) => {
+        try {
+          const path = await window.api.file.getPhysicalPath({ id })
+          const dataUrl = await getImageBlobFromSource(toSafeFileUrl(path, null)).then(blobToDataUrl)
+          return [id, dataUrl] as const
+        } catch {
+          return null
+        }
+      })
+    ).then((entries) => {
+      if (cancelled) return
+      setAttachmentFileUrls(new Map(entries.flatMap((entry) => (entry ? [entry] : []))))
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [generatedImageIds])
   const visibleComposerFileTokens = useMemo(
     () => getVisibleComposerFileTokens(messageParts, message, expandedTextPartIds),
     [expandedTextPartIds, message, messageParts]
@@ -1462,6 +1519,7 @@ const MessagePartsRendererContent = React.memo(function MessagePartsRendererCont
       expandedTextPartIds,
       messageCitations,
       readOnlyFilePreviews,
+      attachmentFileUrls,
       onTextPlayoutSettledChange: handleTextPlayoutSettledChange,
       onTextPartExpandedChange: handleTextPartExpandedChange
     }),
@@ -1471,7 +1529,8 @@ const MessagePartsRendererContent = React.memo(function MessagePartsRendererCont
       handleTextPartExpandedChange,
       handleTextPlayoutSettledChange,
       messageCitations,
-      readOnlyFilePreviews
+      readOnlyFilePreviews,
+      attachmentFileUrls
     ]
   )
   const canRenderReportArtifacts =

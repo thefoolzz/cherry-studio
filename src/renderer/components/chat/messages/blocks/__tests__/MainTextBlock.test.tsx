@@ -291,6 +291,7 @@ describe('MainTextBlock', () => {
     mentions?: Model[]
     composer?: ComposerMessageSnapshot
     readOnlyFilePreviews?: ReadonlyMap<string, ReadOnlyComposerFileTokenPreview>
+    attachmentFileUrls?: ReadonlyMap<string, string>
   }) => {
     return render(
       <MainTextBlock
@@ -304,6 +305,7 @@ describe('MainTextBlock', () => {
         mentions={props.mentions}
         composer={props.composer}
         readOnlyFilePreviews={props.readOnlyFilePreviews}
+        attachmentFileUrls={props.attachmentFileUrls}
       />
     )
   }
@@ -318,6 +320,19 @@ describe('MainTextBlock', () => {
       expect(getRenderedMarkdown()).toBeInTheDocument()
       expect(screen.getByText('Markdown: Assistant response')).toBeInTheDocument()
       expect(getRenderedPlainText()).not.toBeInTheDocument()
+    })
+
+    it('renders generated attachment images in their article positions', () => {
+      renderMainTextBlock({
+        content: '开场\n\n![封面](attachment://image-1)\n\n正文',
+        role: 'assistant',
+        attachmentFileUrls: new Map([['image-1', 'file:///generated-cover.png']])
+      })
+
+      expect(getRenderedMarkdown()).toHaveAttribute(
+        'data-content',
+        '开场\n\n![封面](file:///generated-cover.png)\n\n正文'
+      )
     })
 
     it('keeps inline HTML generating until smoothed content reaches the completed source', () => {

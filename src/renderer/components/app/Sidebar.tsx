@@ -1,4 +1,5 @@
 import { usePersistCache } from '@data/hooks/useCache'
+import { useQuery } from '@data/hooks/useDataApi'
 import { usePreference } from '@data/hooks/usePreference'
 import { arrayMove } from '@dnd-kit/sortable'
 import { useAgents } from '@renderer/hooks/agent/useAgent'
@@ -20,6 +21,7 @@ import {
   resolveSidebarActiveItem,
   tabBelongsToApp
 } from '@renderer/utils/sidebar'
+import { AlertTriangle, Link2 } from 'lucide-react'
 import type { Ref } from 'react'
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -58,6 +60,9 @@ export default function Sidebar({ ref }: { ref?: Ref<HTMLDivElement | null> }) {
   const { miniApps, pinned } = useMiniApps({ enabled: miniAppFavoriteIds.length > 0 })
   const { agents } = useAgents({ enabled: agentFavoriteIds.length > 0 })
   const { assistants } = useAssistantsApi({ enabled: assistantFavoriteIds.length > 0 })
+  const { data: publishingAccounts } = useQuery('/publishing-accounts', {
+    query: { platform: 'wechat', status: 'expired', limit: 1 }
+  })
   const [defaultPaintingProvider] = usePreference('feature.paintings.default_provider')
   // Pinned entity rows render through the same icon renderers as their rails, so they
   // follow the same icon-type preferences instead of always showing the emoji.
@@ -149,6 +154,8 @@ export default function Sidebar({ ref }: { ref?: Ref<HTMLDivElement | null> }) {
   )
 
   const activeItem = resolveSidebarActiveItem(pathname)
+  const platformAccountsActive = pathname === '/platform-accounts'
+  const hasPublishingWarning = (publishingAccounts?.total ?? 0) > 0
 
   const navigateRouteTab = useCallback(
     (path: string, title: string, options?: { inNewTab?: boolean; icon?: string }) => {
@@ -202,6 +209,32 @@ export default function Sidebar({ ref }: { ref?: Ref<HTMLDivElement | null> }) {
       navigateRouteTab(path, getDefaultRouteTitle(path), options)
     },
     [activeTab, defaultPaintingProvider, navigateRouteTab]
+  )
+
+  const fixedEntries = useMemo(
+    () => [
+      {
+        key: 'fixed:platform-accounts',
+        label: t('platform_accounts.title', { defaultValue: 'Platform accounts' }),
+        renderIcon: (size: number) =>
+          hasPublishingWarning ? (
+            <span className="relative flex items-center justify-center">
+              <Link2 size={size} strokeWidth={1.6} />
+              <AlertTriangle size={9} className="-right-1 -top-1 absolute text-warning" aria-hidden="true" />
+            </span>
+          ) : (
+            <Link2 size={size} strokeWidth={1.6} />
+          ),
+        isActive: (active: { activeItem: string }) => active.activeItem === 'platform-accounts',
+        onOpen: () =>
+          navigateRouteTab('/platform-accounts', t('platform_accounts.title', { defaultValue: 'Platform accounts' })),
+        onOpenNewTab: () =>
+          navigateRouteTab('/platform-accounts', t('platform_accounts.title', { defaultValue: 'Platform accounts' }), {
+            inNewTab: true
+          })
+      }
+    ],
+    [hasPublishingWarning, navigateRouteTab, t]
   )
   const handleOpenLaunchpad = useCallback(() => {
     openTab('/app/launchpad', { title: getDefaultRouteTitle('/app/launchpad'), forceNew: true })
@@ -354,7 +387,8 @@ export default function Sidebar({ ref }: { ref?: Ref<HTMLDivElement | null> }) {
   // Common props shared between normal and floating sidebar
   const sidebarProps = {
     entries,
-    active: { activeItem, activeTabId: activeMiniAppId },
+    fixedEntries,
+    active: { activeItem: platformAccountsActive ? 'platform-accounts' : activeItem, activeTabId: activeMiniAppId },
     title: sidebarUser.name,
     logo: sidebarLogo,
     actions: (footerLayout: SidebarVisibleLayout, onOverlayOpenChange?: (open: boolean) => void) => (

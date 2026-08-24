@@ -23,6 +23,7 @@ import { jobTable } from './job'
 import { messageTable } from './message'
 import { miniAppTable } from './miniApp'
 import { paintingTable } from './painting'
+import { publishingTaskTable } from './publishing'
 import { translateHistoryTable } from './translateHistory'
 import { userProviderTable } from './userProvider'
 
@@ -266,15 +267,32 @@ export const persistentFileRefTablesBySourceType = {
   | typeof miniAppLogoFileRefTable
 >
 
+/** Direct file-entry links owned by domains without a collection ref table. */
+export const persistentFileEntryForeignKeyTables = [
+  { table: publishingTaskTable, fileEntryColumn: publishingTaskTable.coverFileEntryId }
+] as const
+
 /**
  * NOT EXISTS conditions for "no persistent ref points at this file_entry",
  * generated from the registry so a new ref table cannot be silently omitted
  * from unreferenced/cleanup discovery (file-entry-cleanup.md §5.1).
  */
 export function persistentRefAbsenceConditions(): SQL[] {
-  return Object.values(persistentFileRefTablesBySourceType).map(
+  const associationConditions = Object.values(persistentFileRefTablesBySourceType).map(
     (table) => sql`NOT EXISTS (SELECT 1 FROM ${table} WHERE ${table.fileEntryId} = ${fileEntryTable.id})`
   )
+  const directConditions = persistentFileEntryForeignKeyTables.map(
+    ({ table, fileEntryColumn }) =>
+      sql`NOT EXISTS (SELECT 1 FROM ${table} WHERE ${fileEntryColumn} = ${fileEntryTable.id})`
+  )
+  const publishingBodyCondition = sql`
+    NOT EXISTS (
+      SELECT 1
+      FROM ${publishingTaskTable}, json_each(${publishingTaskTable.imageFileEntryIds}) AS image_ref
+      WHERE image_ref.value = ${fileEntryTable.id}
+    )
+  `
+  return [...associationConditions, ...directConditions, publishingBodyCondition]
 }
 
 export type ChatMessageFileRefRow = typeof chatMessageFileRefTable.$inferSelect

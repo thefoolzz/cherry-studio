@@ -51,6 +51,7 @@ import { PdfTranslationService } from '@main/services/PdfTranslationService'
 import { ProtocolService } from '@main/services/protocol/ProtocolService'
 import { ProviderRegistryUpdaterService } from '@main/services/ProviderRegistryUpdaterService'
 import { ProxyService } from '@main/services/proxy/ProxyService'
+import { PublishingService } from '@main/services/publishing/PublishingService'
 import { PythonService } from '@main/services/PythonService'
 import { QuickAssistantService } from '@main/services/QuickAssistantService'
 import { ScreenshotOverlayService } from '@main/services/screenshot'
@@ -151,6 +152,7 @@ export const services = {
   AppUpdaterService,
   AutoBackupService,
   ProviderRegistryUpdaterService,
+  PublishingService,
   SchedulerService,
   JobManager
 } as const

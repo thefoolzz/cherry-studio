@@ -4,6 +4,7 @@ import {
   jobFileRefTable,
   miniAppLogoFileRefTable,
   paintingFileRefTable,
+  persistentFileEntryForeignKeyTables,
   persistentFileRefTablesBySourceType,
   providerLogoFileRefTable
 } from '@data/db/schemas/fileRelations'
@@ -2005,7 +2006,10 @@ describe('FileEntryService', () => {
       // be registered. A ref table left out makes entries it alone references
       // look unreferenced → the GC deletes them (data loss). Reflect the live
       // schema so a forgotten registration fails CI, not production.
-      const registered = new Set(Object.values(persistentFileRefTablesBySourceType).map((t) => getTableName(t)))
+      const registered = new Set([
+        ...Object.values(persistentFileRefTablesBySourceType).map((t) => getTableName(t)),
+        ...persistentFileEntryForeignKeyTables.map(({ table }) => getTableName(table))
+      ])
       // Reflect the live schema via the `pragma_foreign_key_list` table-valued
       // function so a table with an FK to file_entry(id) but no registry entry
       // fails here. `table` is a keyword, hence the quotes.

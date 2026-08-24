@@ -47,6 +47,7 @@ const APP_VERSION = `${app?.getVersion?.() || 'unknown'}`
  * Idempotent when already in dev (`isDev || x === isDev`). See docs/references/diagnostics/README.md.
  */
 const DEV_LOGGING = isDev || DIAGNOSTICS_ENABLED
+const CONSOLE_LOGGING = DEV_LOGGING && Boolean(process.stdout.isTTY || process.stderr.isTTY)
 
 const DEFAULT_LEVEL = DEV_LOGGING ? LEVEL.SILLY : LEVEL.INFO
 
@@ -80,7 +81,7 @@ export class LoggerService {
 
     // env variables, only used in dev / diagnostics (CS_DIAGNOSTICS) mode
     // only affect console output, not affect file output
-    if (DEV_LOGGING) {
+    if (CONSOLE_LOGGING) {
       // load env level if exists
       if (
         process.env.CSLOGGER_MAIN_LEVEL &&
@@ -147,7 +148,7 @@ export class LoggerService {
 
     // Handle transport events
     this.logger.on('error', (error) => {
-      console.error('LoggerService fatal error:', error)
+      if (CONSOLE_LOGGING) console.error('LoggerService fatal error:', error)
     })
 
     //register ipc handler, for renderer process to log to main process
@@ -186,7 +187,7 @@ export class LoggerService {
    * @param meta - Additional metadata to log
    */
   private processLog(source: LogSourceWithContext, level: LogLevel, message: string, meta: any[]): void {
-    if (DEV_LOGGING) {
+    if (CONSOLE_LOGGING) {
       // skip if env level is set and current level is less than env level
       if (this.envLevel !== LEVEL.NONE && LEVEL_MAP[level] < LEVEL_MAP[this.envLevel]) {
         return

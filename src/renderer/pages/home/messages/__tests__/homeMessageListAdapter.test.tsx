@@ -1,7 +1,8 @@
 import type { MessageListProviderValue, MessageListRuntime } from '@renderer/components/chat/messages/types'
 import type { CherryMessagePart, CherryUIMessage } from '@shared/data/types/message'
+import { PUBLISHING_ASSISTANT_ID } from '@shared/data/types/publishing'
 import { mockUseMutation } from '@test-mocks/renderer/useDataApi'
-import { act, render, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { type ReactNode, useEffect } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -50,6 +51,8 @@ const { refetchTranslationLanguagesMock, useLanguagesMock } = vi.hoisted(() => {
 })
 const useMessageErrorActionsMock = vi.hoisted(() => vi.fn<(options?: unknown) => Record<string, never>>(() => ({})))
 const openRouteMock = vi.hoisted(() => vi.fn())
+const getComposerTextFromPartsMock = vi.hoisted(() => vi.fn((_parts: CherryMessagePart[] = []) => ''))
+const publishingDraftActionMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@data/DataApiService', () => ({
   dataApiService: {
@@ -212,7 +215,14 @@ vi.mock('@renderer/utils/markdown', () => ({
 }))
 
 vi.mock('@renderer/utils/message/composerTokens', () => ({
-  getComposerTextFromParts: vi.fn(() => '')
+  getComposerTextFromParts: getComposerTextFromPartsMock
+}))
+
+vi.mock('../PublishingDraftAction', () => ({
+  PublishingDraftAction: (props: { imageFileIds: string[] }) => {
+    publishingDraftActionMock(props)
+    return <div data-testid="publishing-draft-action" data-image-file-ids={JSON.stringify(props.imageFileIds)} />
+  }
 }))
 
 vi.mock('@shared/utils/model', () => ({
@@ -267,7 +277,8 @@ function MessageListAdapterHarness({
   onStartBranchDraft,
   onValue,
   partsByMessageId = {},
-  topic
+  topic,
+  assistantId = 'assistant-1'
 }: {
   imageActionConsumer?: 'capture'
   streamingLayers?: MessageListProviderValue['state']['streamingLayers']
@@ -277,10 +288,11 @@ function MessageListAdapterHarness({
   onValue?: (value: MessageListProviderValue) => void
   partsByMessageId?: Record<string, CherryMessagePart[]>
   topic: Topic
+  assistantId?: string
 }) {
   const value = useHomeMessageListProviderValue({
     topic,
-    assistant: { id: 'assistant-1', name: 'Assistant', emoji: '🤖' } as any,
+    assistant: { id: assistantId, name: 'Assistant', emoji: '🤖' } as any,
     messages,
     partsByMessageId,
     streamingLayers,
@@ -303,6 +315,9 @@ describe('useHomeMessageListProviderValue topic image actions', () => {
     messageEditingMock.editingMessageId = null
     messageEditingMock.editingMessage = null
     modelSelectorMock.props = []
+    getComposerTextFromPartsMock.mockReset()
+    getComposerTextFromPartsMock.mockReturnValue('')
+    publishingDraftActionMock.mockClear()
     clearPendingTopicImageActionsForTest()
     Object.defineProperty(window, 'api', {
       configurable: true,
@@ -360,6 +375,49 @@ describe('useHomeMessageListProviderValue topic image actions', () => {
     act(() => void value?.actions.navigateToRoute?.({ path: '/app/paintings', query: { source: 'assistant' } }))
 
     expect(openRouteMock).toHaveBeenCalledWith('/app/paintings', { source: 'assistant' })
+  })
+
+  it('publishes attachment files referenced by a follow-up article message', () => {
+    getComposerTextFromPartsMock.mockImplementation((parts?: CherryMessagePart[]) =>
+      (parts ?? []).flatMap((part) => (part.type === 'text' ? [part.text] : [])).join('')
+    )
+    const topic = { ...createTopic('topic-a'), assistantId: PUBLISHING_ASSISTANT_ID }
+    const messages = [
+      { id: 'user-1', topicId: topic.id, role: 'user', status: 'success' },
+      { id: 'assistant-images', topicId: topic.id, role: 'assistant', status: 'success' },
+      { id: 'user-2', topicId: topic.id, role: 'user', status: 'success' },
+      { id: 'assistant-article', topicId: topic.id, role: 'assistant', status: 'success' }
+    ] as unknown as CherryUIMessage[]
+    const partsByMessageId = {
+      'assistant-article': [
+        {
+          type: 'text',
+          text: [
+            '# 完整文章',
+            '![封面](attachment://cover-file-id)',
+            '正文',
+            '![配图](attachment://body-file-id)'
+          ].join('\n\n')
+        }
+      ] as CherryMessagePart[]
+    }
+    let value: MessageListProviderValue | undefined
+
+    render(
+      <MessageListAdapterHarness
+        topic={topic}
+        assistantId={PUBLISHING_ASSISTANT_ID}
+        messages={messages}
+        partsByMessageId={partsByMessageId}
+        onValue={(nextValue) => (value = nextValue)}
+      />
+    )
+    render(<>{value?.state.messageTail?.content}</>)
+
+    expect(screen.getByTestId('publishing-draft-action')).toHaveAttribute(
+      'data-image-file-ids',
+      JSON.stringify(['cover-file-id', 'body-file-id'])
+    )
   })
 
   it('injects Home-message diagnosis persistence into the shared error UI', async () => {

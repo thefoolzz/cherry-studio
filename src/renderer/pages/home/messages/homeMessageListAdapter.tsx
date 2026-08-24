@@ -47,13 +47,17 @@ import { createComposerRichClipboardContentFromParts } from '@renderer/utils/mes
 import { getComposerTextFromParts } from '@renderer/utils/message/composerTokens'
 import { isVisionModel } from '@renderer/utils/model'
 import { translateText } from '@renderer/utils/translate'
+import { generateImageOutputSchema } from '@shared/ai/builtinTools'
 import type { TranslateLangCode } from '@shared/data/preference/preferenceTypes'
 import type { CherryMessagePart, CherryUIMessage } from '@shared/data/types/message'
 import { createUniqueModelId, type Model as SharedModel, type UniqueModelId } from '@shared/data/types/model'
+import { PUBLISHING_ASSISTANT_ID } from '@shared/data/types/publishing'
 import { isNonChatModel } from '@shared/utils/model'
+import { getToolName, isToolUIPart } from 'ai'
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { PublishingDraftAction } from './PublishingDraftAction'
 import {
   consumePendingTopicImageActions,
   rejectPendingTopicImageActions,
@@ -63,6 +67,22 @@ import {
 } from './topicImageActionBus'
 
 const logger = loggerService.withContext('HomeMessageListAdapter')
+
+function getGeneratedImageFileIds(parts: CherryMessagePart[]): string[] {
+  const ids = new Set<string>()
+  for (const part of parts) {
+    if (!isToolUIPart(part) || part.state !== 'output-available' || getToolName(part) !== 'generate_image') continue
+    const output = (part as { output?: unknown }).output
+    const parsed = generateImageOutputSchema.safeParse(output)
+    if (!parsed.success) continue
+    for (const image of parsed.data) ids.add(image.id)
+  }
+  return [...ids]
+}
+
+function getAttachmentFileIds(markdown: string): string[] {
+  return [...new Set([...markdown.matchAll(/attachment:\/\/([\w.-]+)/g)].map((match) => match[1]))]
+}
 
 interface HomeMessageListParams {
   topic: Topic
@@ -152,6 +172,50 @@ export function useHomeMessageListProviderValue({
       return item
     })
   }, [messages, resolvedAssistantId, topicId])
+
+  const publishingMessageTail = useMemo<MessageListState['messageTail']>(() => {
+    if (assistant?.id !== PUBLISHING_ASSISTANT_ID) return undefined
+
+    const latestMessageIndex = messageItems.findLastIndex((message) => !message.isContextBoundary)
+    if (latestMessageIndex < 0) return undefined
+
+    const latestMessage = messageItems[latestMessageIndex]
+    if (latestMessage.role !== 'assistant' || latestMessage.status !== 'success') return undefined
+
+    // Image generation can finish in a tool-only assistant turn after the
+    // article text was emitted. Treat the assistant messages after the latest
+    // user turn as one publishing turn so those images stay attached to it.
+    const latestUserIndex = messageItems.findLastIndex(
+      (message, index) => index < latestMessageIndex && message.role === 'user' && !message.isContextBoundary
+    )
+    const turnMessages = messageItems.slice(latestUserIndex + 1, latestMessageIndex + 1)
+    const articleMessage = turnMessages.findLast((message) => {
+      if (message.role !== 'assistant' || message.status !== 'success') return false
+      return getComposerTextFromParts(partsByMessageId[message.id] ?? []).trim().length > 0
+    })
+    if (!articleMessage) return undefined
+
+    const articleParts = partsByMessageId[articleMessage.id] ?? []
+    const markdown = getComposerTextFromParts(articleParts)
+    const imageFileIds = [
+      ...new Set([
+        ...getAttachmentFileIds(markdown),
+        ...turnMessages.flatMap((message) => getGeneratedImageFileIds(partsByMessageId[message.id] ?? []))
+      ])
+    ]
+    if (!markdown.trim()) return undefined
+
+    return {
+      messageId: latestMessage.id,
+      content: (
+        <PublishingDraftAction
+          markdown={markdown}
+          topicName={topic.name}
+          imageFileIds={imageFileIds}
+        />
+      )
+    }
+  }, [assistant?.id, messageItems, partsByMessageId, topic.name])
 
   const messagesRef = useRef<MessageListItem[]>(messageItems)
   const partsByMessageIdRef = useRef(partsByMessageId)
@@ -774,6 +838,7 @@ export function useHomeMessageListProviderValue({
       messages: messageItems,
       partsByMessageId,
       streamingLayers,
+      messageTail: publishingMessageTail,
       isInitialLoading,
       isMessagesStale,
       hasOlder,
@@ -808,6 +873,7 @@ export function useHomeMessageListProviderValue({
       messageItems,
       messageNavigation,
       partsByMessageId,
+      publishingMessageTail,
       renderConfig,
       resolvedAssistantId,
       selectionController.selection,

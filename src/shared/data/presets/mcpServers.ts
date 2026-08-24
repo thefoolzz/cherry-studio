@@ -160,6 +160,20 @@ export const PRESET_MCP_SERVERS = freezePresets([
     isTrusted: true
   },
   {
+    name: BuiltinMcpServerNames.publishing,
+    type: 'inMemory',
+    isActive: true,
+    disabledAutoApproveTools: [
+      'start_account_binding',
+      'create_wechat_draft',
+      'retry_publish_task',
+      'cancel_publish_task'
+    ],
+    provider: 'Post Studio',
+    installSource: 'builtin',
+    isTrusted: true
+  },
+  {
     name: BuiltinMcpServerNames.nowledgeMem,
     reference: 'https://mem.nowledge.co/',
     type: 'streamableHttp',

@@ -167,6 +167,40 @@ export const WINDOW_TYPE_REGISTRY: Partial<Record<WindowType, WindowTypeMetadata
     }
   },
 
+  // Isolated WeChat Official Account session. PublishingService owns the page
+  // content and chooses the persisted partition per account before loading it.
+  [WindowType.PublishingAccount]: {
+    type: WindowType.PublishingAccount,
+    lifecycle: 'default',
+    htmlPath: '',
+    preload: '',
+    showMode: 'manual',
+    windowOptions: {
+      width: 1180,
+      height: 820,
+      minWidth: 800,
+      minHeight: 600,
+      autoHideMenuBar: true,
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+        webSecurity: true,
+        backgroundThrottling: false
+      },
+      platformOverrides: {
+        mac: {
+          titleBarStyle: 'hidden',
+          titleBarOverlay: { height: 42 },
+          trafficLightPosition: { x: 13, y: 13 }
+        },
+        win: { frame: false },
+        linux: { frame: false }
+      }
+    },
+    behavior: { macShowInDock: false }
+  },
+
   // Detached tab window — multi-instance, one per user-detached Tab.
   // Placed adjacent to Main because a SubWindow is logically a Main spin-off
   // (a Tab dragged out of Main becomes its own BrowserWindow here; drag back

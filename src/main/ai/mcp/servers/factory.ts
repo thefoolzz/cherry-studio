@@ -45,6 +45,10 @@ const inMemoryServers: Partial<Record<BuiltinMcpServerName, InMemoryServerLoader
   [BuiltinMcpServerNames.browser]: async () => {
     const { BrowserServer } = await import('./browser')
     return new BrowserServer().server
+  },
+  [BuiltinMcpServerNames.publishing]: async () => {
+    const { default: PublishingServer } = await import('./publishing')
+    return new PublishingServer().mcpServer.server
   }
 }
 

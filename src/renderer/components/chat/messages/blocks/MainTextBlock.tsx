@@ -41,6 +41,7 @@ interface Props {
   role: CherryUIMessage['role']
   composer?: ComposerMessageSnapshot
   readOnlyFilePreviews?: ReadonlyMap<string, ReadOnlyComposerFileTokenPreview>
+  attachmentFileUrls?: ReadonlyMap<string, string>
   userContentExpanded?: boolean
   onPlayoutSettledChange?: (partId: string, settled: boolean) => void
   onUserContentExpandedChange?: (expanded: boolean) => void
@@ -141,6 +142,11 @@ function renderComposerMessageContent(
 
 function escapeHtmlAttribute(value: string) {
   return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function replaceAttachmentImageRefs(content: string, attachmentFileUrls?: ReadonlyMap<string, string>): string {
+  if (!attachmentFileUrls?.size) return content
+  return content.replace(/attachment:\/\/([\w.-]+)/g, (match, id: string) => attachmentFileUrls.get(id) ?? match)
 }
 
 function getComposerMarkdownTokenPlaceholder(index: number, blockId: string) {
@@ -320,6 +326,7 @@ const MainTextBlock: React.FC<Props> = ({
   mentions = [],
   composer,
   readOnlyFilePreviews,
+  attachmentFileUrls,
   userContentExpanded,
   onPlayoutSettledChange,
   onUserContentExpandedChange
@@ -391,16 +398,17 @@ const MainTextBlock: React.FC<Props> = ({
   )
   const processContent = useCallback(
     (rawText: string) => {
+      const withImages = (text: string) => replaceAttachmentImageRefs(text, attachmentFileUrls)
       if (citationReferences?.length && citations.length > 0) {
         const sourceType = determineCitationSource(citationReferences)
-        return withCitationTags(rawText, citations, sourceType)
+        return withImages(withCitationTags(rawText, citations, sourceType))
       }
       if (toolCitations) {
-        return withToolCitationTags(rawText, toolCitations.citations, toolCitations.projection.byMarker).content
+        return withImages(withToolCitationTags(rawText, toolCitations.citations, toolCitations.projection.byMarker).content)
       }
-      return rawText
+      return withImages(rawText)
     },
-    [citationReferences, citations, toolCitations]
+    [attachmentFileUrls, citationReferences, citations, toolCitations]
   )
   const toolCitedCitations = toolCitations?.projection.cited ?? EMPTY_CITATIONS
   const footerCitations = citations.length > 0 ? citations : toolCitedCitations

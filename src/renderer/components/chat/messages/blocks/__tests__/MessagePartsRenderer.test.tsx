@@ -1,6 +1,6 @@
 import { UpdateAgentSessionMessageSchema } from '@shared/data/api/schemas/agentSessionMessages'
 import type { CherryMessagePart } from '@shared/data/types/message'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -13,6 +13,9 @@ const mockIsActiveTurnTarget = vi.hoisted(() => vi.fn(() => false))
 const mockTopicStreamState = vi.hoisted(() => ({ status: undefined as string | undefined }))
 const mockThinkingBlockMounted = vi.hoisted(() => vi.fn())
 const mockMainTextRender = vi.hoisted(() => vi.fn())
+const mockGetPhysicalPath = vi.hoisted(() => vi.fn())
+const mockGetImageBlobFromSource = vi.hoisted(() => vi.fn())
+const mockBlobToDataUrl = vi.hoisted(() => vi.fn())
 const mockReadText = vi.hoisted(() => vi.fn())
 const mockUsePlaceholderElapsedMs = vi.hoisted(() => vi.fn(() => 1000))
 const mockToolBlockGroupRender = vi.hoisted(() => vi.fn())
@@ -76,6 +79,11 @@ vi.mock('motion/react', () => {
 
 vi.mock('@renderer/components/ErrorBoundary', () => ({
   ErrorBoundary: ({ children }: any) => <>{children}</>
+}))
+
+vi.mock('@renderer/utils/image', () => ({
+  blobToDataUrl: mockBlobToDataUrl,
+  getImageBlobFromSource: mockGetImageBlobFromSource
 }))
 
 vi.mock('@renderer/components/icons/FallbackFavicon', () => ({
@@ -484,12 +492,19 @@ describe('MessagePartsRenderer', () => {
     mockTopicStreamState.status = undefined
     mockThinkingBlockMounted.mockClear()
     mockMainTextRender.mockClear()
+    mockGetPhysicalPath.mockReset()
+    mockGetImageBlobFromSource.mockReset()
+    mockBlobToDataUrl.mockReset()
     mockReadText.mockReset()
     mockReadText.mockResolvedValue('Pasted text preview')
     Object.defineProperty(window, 'api', {
       configurable: true,
       value: {
         ...window.api,
+        file: {
+          ...window.api?.file,
+          getPhysicalPath: mockGetPhysicalPath
+        },
         fs: {
           ...window.api?.fs,
           readText: mockReadText
@@ -596,6 +611,24 @@ describe('MessagePartsRenderer', () => {
       expect(markdown[0]).toContain('hello world')
       expect(markdown[1]).toContain('```js')
       expect(markdown[1]).toContain('console.log(1)')
+    })
+
+    it('resolves images referenced by a text-only follow-up message', async () => {
+      mockGetPhysicalPath.mockResolvedValue('/tmp/generated-image.png')
+      mockGetImageBlobFromSource.mockResolvedValue(new Blob(['image'], { type: 'image/png' }))
+      mockBlobToDataUrl.mockResolvedValue('data:image/png;base64,aW1hZ2U=')
+
+      renderParts([
+        { type: 'text', text: '![正文配图](attachment://generated-image-id)' }
+      ] as unknown as CherryMessagePart[])
+
+      await waitFor(() =>
+        expect(screen.getByTestId('mock-markdown')).toHaveTextContent(
+          '![正文配图](data:image/png;base64,aW1hZ2U=)'
+        )
+      )
+      expect(mockGetPhysicalPath).toHaveBeenCalledWith({ id: 'generated-image-id' })
+      expect(mockGetImageBlobFromSource).toHaveBeenCalledWith('file:///tmp/generated-image.png')
     })
 
     it('renders single and grouped images while skipping image parts without a URL', () => {

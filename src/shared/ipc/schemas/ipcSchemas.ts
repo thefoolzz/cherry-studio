@@ -26,6 +26,7 @@ import { ovmsRequestSchemas } from './ovms'
 import { printRequestSchemas } from './print'
 import { profileRequestSchemas } from './profile'
 import { providerRequestSchemas } from './provider'
+import { type PublishingEventSchemas, publishingRequestSchemas } from './publishing'
 import { type QuickAssistantEventSchemas, quickAssistantRequestSchemas } from './quickAssistant'
 import { type ScreenshotEventSchemas, screenshotRequestSchemas } from './screenshot'
 import { type SelectionEventSchemas, selectionRequestSchemas } from './selection'
@@ -70,6 +71,7 @@ export const ipcRequestSchemas = {
   ...openclawRequestSchemas,
   ...ovmsRequestSchemas,
   ...printRequestSchemas,
+  ...publishingRequestSchemas,
   ...profileRequestSchemas,
   ...providerRequestSchemas,
   ...quickAssistantRequestSchemas,
@@ -102,6 +104,7 @@ export type IpcEventSchemas = AiEventSchemas &
   FileEventSchemas &
   LocalModelEventSchemas &
   McpEventSchemas &
+  PublishingEventSchemas &
   NavigationEventSchemas &
   NotificationEventSchemas &
   OAuthEventSchemas &

@@ -8,6 +8,7 @@ import { LocalModelSeeder } from './seeders/LocalModelSeeder'
 import { MiniAppSeeder } from './seeders/miniAppSeeder'
 import { PreferenceSeeder } from './seeders/preferenceSeeder'
 import { PresetProviderSeeder } from './seeders/presetProviderSeeder'
+import { PublishingAssistantSeeder } from './seeders/publishingAssistantSeeder'
 import { TranslateLanguageSeeder } from './seeders/translateLanguageSeeder'
 
 /**
@@ -29,5 +30,6 @@ export const seeders: ISeeder[] = [
   new PresetProviderSeeder(),
   new LocalModelSeeder(),
   new MiniAppSeeder(),
-  new BuiltinMcpServerSeeder()
+  new BuiltinMcpServerSeeder(),
+  new PublishingAssistantSeeder()
 ]

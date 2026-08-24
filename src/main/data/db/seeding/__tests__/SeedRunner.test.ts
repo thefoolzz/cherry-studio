@@ -4,6 +4,7 @@ import { application } from '@application'
 import { appStateTable } from '@data/db/schemas/appState'
 import { assistantTable } from '@data/db/schemas/assistant'
 import { seeders } from '@data/db/seeding/seederRegistry'
+import { PUBLISHING_ASSISTANT_ID } from '@data/db/seeding/seeders/publishingAssistantSeeder'
 import { SeedRunner } from '@data/db/seeding/SeedRunner'
 import type { ISeeder } from '@data/db/types'
 import { setupTestDatabase } from '@test-helpers/db'
@@ -184,6 +185,7 @@ describe('SeedRunner', () => {
     runner.runAll(seeders)
 
     const assistants = await dbh.db.select().from(assistantTable)
-    expect(assistants).toHaveLength(1)
+    expect(assistants).toHaveLength(2)
+    expect(assistants.filter((assistant) => assistant.id === PUBLISHING_ASSISTANT_ID)).toHaveLength(1)
   })
 })
