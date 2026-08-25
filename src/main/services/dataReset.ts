@@ -325,10 +325,10 @@ export function runDataReset(): void {
       })
       showDataResetError(
         'Data Reset Failed',
-        'Cherry Studio could not record the data reset state ' +
+        '晨微 could not record the data reset state ' +
           `in ${markerPath()}.\n\n` +
           'Starting now could erase data you create later, so the app will quit instead.\n\n' +
-          'Please check disk space and file permissions, then start Cherry Studio again.'
+          'Please check disk space and file permissions, then start 晨微 again.'
       )
       return
     }
@@ -352,9 +352,9 @@ export function runDataReset(): void {
         logger.error('v1 remigration cleanup failed — keeping the marker and refusing to boot', { failures })
         showDataResetError(
           'Migration Reset Failed',
-          'Cherry Studio could not safely remove the current v2 data required to rerun migration. ' +
+          '晨微 could not safely remove the current v2 data required to rerun migration. ' +
             'The app will quit and keep the pending request so the cleanup can retry on the next launch.\n\n' +
-            'Please check disk space, file permissions, and antivirus locks, then start Cherry Studio again.'
+            'Please check disk space, file permissions, and antivirus locks, then start 晨微 again.'
         )
         return
       }
@@ -383,10 +383,10 @@ export function runDataReset(): void {
       )
       showDataResetError(
         'Data Reset Incomplete',
-        'Cherry Studio erased its data but could not record the reset as finished ' +
+        '晨微 erased its data but could not record the reset as finished ' +
           `in ${markerPath()}.\n\n` +
           'Starting now could erase anything you create on the next launch, so the app will quit instead.\n\n' +
-          'Please check disk space and file permissions, then start Cherry Studio again.'
+          'Please check disk space and file permissions, then start 晨微 again.'
       )
       return
     }
@@ -405,9 +405,9 @@ export function runDataReset(): void {
     logger.error('Data reset failed — refusing to boot', error as Error)
     showDataResetError(
       'Data Reset Failed',
-      'Cherry Studio could not safely complete a pending data reset. ' +
+      '晨微 could not safely complete a pending data reset. ' +
         'The app will quit instead of starting with a reset marker still present.\n\n' +
-        'Please check disk space and file permissions, then start Cherry Studio again.'
+        'Please check disk space and file permissions, then start 晨微 again.'
     )
   }
 }
@@ -516,7 +516,7 @@ function canonicalize(p: string): string {
 function showPathMismatchWarning(): void {
   dialog.showErrorBox(
     'Data Reset Cancelled',
-    'Cherry Studio did not run Data Reset because the data location changed after confirmation.\n\n' +
+    '晨微 did not run Data Reset because the data location changed after confirmation.\n\n' +
       'No data was removed, and the pending request has been cleared. ' +
       'Run Data Reset again from Settings if you still want to erase this profile.'
   )
@@ -525,7 +525,7 @@ function showPathMismatchWarning(): void {
 function showIncompleteResetWarning(): void {
   dialog.showErrorBox(
     'Data Reset Incomplete',
-    'Cherry Studio could not remove some of its data during the data reset.\n\n' +
+    '晨微 could not remove some of its data during the data reset.\n\n' +
       'The app will start with whatever remains. ' +
       'Please check file permissions (or antivirus locks) and run Data Reset again from Settings.'
   )

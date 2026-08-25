@@ -28,6 +28,7 @@ export interface PlatformLoginState {
 export interface PlatformPublisher {
   readonly platform: PublishingPlatform
   readonly homeUrl: string
+  readonly supportsDrafts: boolean
   getWindowTitle(displayName: string): string
   readLoginState(window: BrowserWindow): Promise<PlatformLoginState>
   createDraft(window: BrowserWindow, input: PlatformDraftInput): Promise<PlatformDraftResult>

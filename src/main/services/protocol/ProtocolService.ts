@@ -262,7 +262,7 @@ export class ProtocolService extends BaseService {
       }
 
       const desktopFileContent = `[Desktop Entry]
-Name=Cherry Studio
+Name=晨微
 Exec=${escapePathForExec(appPath)} %U
 Terminal=false
 Type=Application

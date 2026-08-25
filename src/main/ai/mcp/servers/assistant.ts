@@ -69,7 +69,7 @@ export function isAllowedAssistantNavigationPath(path: string, allowedRoutes: re
 const NAVIGATE_TOOL: Tool = {
   name: 'navigate',
   description:
-    'Create a clickable entry for a route returned by product_info. Use this in the same turn whenever answering where to find, open, configure, or use a Cherry Studio page or feature; written UI steps are not a substitute.',
+    'Create a clickable entry for a route returned by product_info. Use this in the same turn whenever answering where to find, open, configure, or use a 晨微 page or feature; written UI steps are not a substitute.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -90,7 +90,7 @@ const NAVIGATE_TOOL: Tool = {
 const DIAGNOSE_TOOL: Tool = {
   name: 'diagnose',
   description:
-    'Read Cherry Studio runtime state for troubleshooting. Use this to inspect app info, provider config, connectivity, logs, and MCP server status.',
+    'Read 晨微 runtime state for troubleshooting. Use this to inspect app info, provider config, connectivity, logs, and MCP server status.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -120,7 +120,7 @@ const DIAGNOSE_TOOL: Tool = {
 const PRODUCT_INFO_TOOL: Tool = {
   name: 'product_info',
   description:
-    'Read current Cherry Studio product facts from the installed package manifest. Request only the relevant section to keep context small.',
+    'Read current 晨微 product facts from the installed package manifest. Request only the relevant section to keep context small.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -167,14 +167,14 @@ const APPLY_SETTING_REGISTRY: Record<string, ApplySettingEntry> = {
 
 const CREATE_AGENT_TOOL: Tool = {
   name: 'create_agent',
-  description: `Create a new Cherry Studio Agent on behalf of the user. Use this when the user explicitly asks to create / build / make a new agent (e.g. "帮我建一个专门做 Python 代码 review 的 Agent"). MUST collect requirements via conversation first, then SHOW the proposed config to the user for confirmation, and only call this tool after explicit user agreement.
+  description: `Create a new 晨微 Agent on behalf of the user. Use this when the user explicitly asks to create / build / make a new agent (e.g. "帮我建一个专门做 Python 代码 review 的 Agent"). MUST collect requirements via conversation first, then SHOW the proposed config to the user for confirmation, and only call this tool after explicit user agreement.
 
 Safety rules:
 - type is fixed to 'claude-code' (channel-backed agents are out of scope here)
 - a workspace is selected when the user opens a session for the new agent
 - permission_mode defaults to 'default' (read-mostly); user can change later in the UI
 
-The tool returns the new agent details, and Cherry Studio presents a Go to chat action. Do not call navigate after a successful creation.`,
+The tool returns the new agent details, and 晨微 presents a Go to chat action. Do not call navigate after a successful creation.`,
   inputSchema: {
     type: 'object',
     properties: {
@@ -214,7 +214,7 @@ The tool returns the new agent details, and Cherry Studio presents a Go to chat 
 
 const APPLY_SETTING_TOOL: Tool = {
   name: 'apply_setting',
-  description: `Apply a low-risk Cherry Studio setting change directly. Only the whitelist below is supported; destructive operations are never exposed here.
+  description: `Apply a low-risk 晨微 setting change directly. Only the whitelist below is supported; destructive operations are never exposed here.
 
 Supported settings:
 ${Object.values(APPLY_SETTING_REGISTRY)
@@ -485,7 +485,7 @@ class AssistantServer {
       modelService.getByKey(providerId, modelId)
     } catch (error) {
       if (isDataApiError(error) && error.code === DataApiErrorCode.NOT_FOUND) {
-        throw new McpError(ErrorCode.InvalidParams, `Model is not configured in Cherry Studio: ${parsedModel.data}`)
+        throw new McpError(ErrorCode.InvalidParams, `Model is not configured in 晨微: ${parsedModel.data}`)
       }
       throw error
     }

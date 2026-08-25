@@ -11,6 +11,7 @@ import type { PublishingAccount, PublishingPlatform, PublishingTask } from '@sha
 import type { BrowserWindow } from 'electron'
 import { session } from 'electron'
 
+import { CreatorPlatformPublisher } from './CreatorPlatformPublisher'
 import type { PlatformPublisher } from './PlatformPublisher'
 import { WechatPublisher } from './WechatPublisher'
 
@@ -19,6 +20,13 @@ const logger = loggerService.withContext('PublishingService')
 type AccountWindow = {
   accountId: string
   windowId: string
+}
+
+const DEFAULT_ACCOUNT_NAMES: Record<PublishingPlatform, string> = {
+  wechat: '微信公众号',
+  douyin: '抖音',
+  xiaohongshu: '小红书',
+  zhihu: '知乎'
 }
 
 /**
@@ -30,7 +38,28 @@ type AccountWindow = {
 @ServicePhase(Phase.WhenReady)
 export class PublishingService extends BaseService {
   private readonly publishers: Record<PublishingPlatform, PlatformPublisher> = {
-    wechat: new WechatPublisher()
+    wechat: new WechatPublisher(),
+    douyin: new CreatorPlatformPublisher({
+      platform: 'douyin',
+      platformName: '抖音',
+      homeUrl: 'https://creator.douyin.com/',
+      authCookieNames: ['sessionid', 'sessionid_ss', 'sid_guard'],
+      accountNameSelectors: ['[class*="user-name"]', '[class*="userName"]', '[class*="nickname"]']
+    }),
+    xiaohongshu: new CreatorPlatformPublisher({
+      platform: 'xiaohongshu',
+      platformName: '小红书',
+      homeUrl: 'https://creator.xiaohongshu.com/',
+      authCookieNames: ['web_session'],
+      accountNameSelectors: ['[class*="user-name"]', '[class*="userName"]', '[class*="nickname"]']
+    }),
+    zhihu: new CreatorPlatformPublisher({
+      platform: 'zhihu',
+      platformName: '知乎',
+      homeUrl: 'https://www.zhihu.com/creator',
+      authCookieNames: ['z_c0'],
+      accountNameSelectors: ['.AppHeader-profile .Avatar', '[class*="ProfileCard"] [class*="name"]']
+    })
   }
   private readonly windows = new Map<string, AccountWindow>()
   private readonly accountByWindowId = new Map<string, string>()
@@ -76,13 +105,13 @@ export class PublishingService extends BaseService {
     return publishingDataService.listTasks({ accountId, limit: 200 }).items
   }
 
-  async startAccountBinding(displayName: string, returnTopicId?: string): Promise<PublishingAccount> {
+  async startAccountBinding(platform: PublishingPlatform, returnTopicId?: string): Promise<PublishingAccount> {
     const id = randomUUID()
     const account = publishingDataService.createAccount(
       {
-        platform: 'wechat',
-        displayName,
-        partition: `persist:post-studio-wechat-${id}`
+        platform,
+        displayName: DEFAULT_ACCOUNT_NAMES[platform],
+        partition: `persist:post-studio-${platform}-${id}`
       },
       id
     )
@@ -132,8 +161,11 @@ export class PublishingService extends BaseService {
     input: Omit<CreatePublishingTaskDto, 'imageFileEntryIds'> & { bodyImageFileIds?: string[] }
   ): PublishingTask {
     const account = publishingDataService.getAccount(input.accountId)
+    if (!this.publishers[account.platform].supportsDrafts) {
+      throw new Error('该平台暂不支持自动创建草稿')
+    }
     if (account.status !== 'ready') {
-      throw new Error('请先完成公众号账号绑定')
+      throw new Error('请先完成平台账号绑定')
     }
     const task = publishingDataService.createTask({
       accountId: input.accountId,
@@ -271,7 +303,7 @@ export class PublishingService extends BaseService {
       }
     })
     const window = wm.getWindow(windowId)
-    if (!window) throw new Error('无法打开公众号登录窗口')
+    if (!window) throw new Error('无法打开平台登录窗口')
     this.windows.set(account.id, { accountId: account.id, windowId })
     this.accountByWindowId.set(windowId, account.id)
     await window.loadURL(publisher.homeUrl)

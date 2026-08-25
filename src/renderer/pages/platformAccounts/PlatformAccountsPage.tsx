@@ -5,6 +5,7 @@ import {
   ConfirmDialog,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -21,6 +22,7 @@ import { ipcApi, useIpcOn } from '@renderer/ipc'
 import type {
   PublishingAccount,
   PublishingAccountStatus,
+  PublishingPlatform,
   PublishingTask,
   PublishingTaskStatus
 } from '@shared/data/types/publishing'
@@ -30,6 +32,13 @@ import { useTranslation } from 'react-i18next'
 
 const EMPTY_ACCOUNTS: readonly PublishingAccount[] = Object.freeze([])
 const EMPTY_TASKS: readonly PublishingTask[] = Object.freeze([])
+const PUBLISHING_PLATFORMS: readonly PublishingPlatform[] = ['wechat', 'douyin', 'xiaohongshu', 'zhihu']
+const PLATFORM_DEFAULT_LABELS: Record<PublishingPlatform, string> = {
+  wechat: 'WeChat Official Account',
+  douyin: 'Douyin',
+  xiaohongshu: 'Xiaohongshu',
+  zhihu: 'Zhihu'
+}
 
 type AccountFilter = 'all' | PublishingAccountStatus
 
@@ -40,6 +49,13 @@ function formatDate(value: string | undefined, locale: string): string {
 
 function statusLabel(status: PublishingAccountStatus, t: (key: string, options?: { defaultValue?: string }) => string) {
   return t('platform_accounts.status.' + status, { defaultValue: status })
+}
+
+function platformLabel(platform: PublishingPlatform, t: (key: string, options?: { defaultValue?: string }) => string) {
+  if (platform === 'wechat') {
+    return t('platform_accounts.wechat_short', { defaultValue: PLATFORM_DEFAULT_LABELS.wechat })
+  }
+  return t('platform_accounts.' + platform, { defaultValue: PLATFORM_DEFAULT_LABELS[platform] })
 }
 
 function taskStatusLabel(
@@ -67,7 +83,6 @@ export default function PlatformAccountsPage() {
   const [filter, setFilter] = useState<AccountFilter>('all')
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
   const [bindingOpen, setBindingOpen] = useState(false)
-  const [bindingName, setBindingName] = useState('')
   const [renameOpen, setRenameOpen] = useState(false)
   const [renameName, setRenameName] = useState('')
   const [deleteAccountId, setDeleteAccountId] = useState<string | null>(null)
@@ -79,7 +94,7 @@ export default function PlatformAccountsPage() {
     isLoading: accountsLoading,
     refetch: refetchAccounts
   } = useQuery('/publishing-accounts', {
-    query: { platform: 'wechat', limit: 200 }
+    query: { limit: 200 }
   })
   const {
     data: tasksData,
@@ -107,14 +122,12 @@ export default function PlatformAccountsPage() {
   useIpcOn('publishing.account.updated', refresh)
   useIpcOn('publishing.task.updated', refresh)
 
-  const handleStartBinding = async () => {
-    const displayName = bindingName.trim()
-    if (!displayName) return
-    setBusyAccountId('binding')
+  const handleStartBinding = async (platform: PublishingPlatform) => {
+    const bindingId = `binding:${platform}`
+    setBusyAccountId(bindingId)
     try {
-      const account = await ipcApi.request('publishing.start_account_binding', { displayName })
+      const account = await ipcApi.request('publishing.start_account_binding', { platform })
       setBindingOpen(false)
-      setBindingName('')
       setSelectedAccountId(account.id)
       refresh()
     } finally {
@@ -210,11 +223,11 @@ export default function PlatformAccountsPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="font-semibold text-foreground text-lg">
-                {t('platform_accounts.wechat', { defaultValue: 'WeChat Official Accounts' })}
+                {t('platform_accounts.accounts', { defaultValue: 'Connected accounts' })}
               </h1>
               <p className="mt-1 text-muted-foreground text-sm">
                 {t('platform_accounts.subtitle', {
-                  defaultValue: 'Keep each account in its own session and create drafts from Cherry Studio.'
+                  defaultValue: 'Manage each platform account in its own isolated sign-in session.'
                 })}
               </p>
             </div>
@@ -242,7 +255,7 @@ export default function PlatformAccountsPage() {
               icon={Link2}
               title={t('platform_accounts.empty.title', { defaultValue: 'No platform accounts yet' })}
               description={t('platform_accounts.empty.description', {
-                defaultValue: 'Bind a WeChat Official Account to start creating drafts.'
+                defaultValue: 'Select a platform and sign in to add an account.'
               })}
               actionLabel={t('platform_accounts.bind', { defaultValue: 'Bind account' })}
               onAction={() => setBindingOpen(true)}
@@ -264,7 +277,7 @@ export default function PlatformAccountsPage() {
                       <span className="min-w-0">
                         <span className="block truncate font-medium text-foreground">{account.displayName}</span>
                         <span className="mt-1 block text-muted-foreground text-xs">
-                          {t('platform_accounts.wechat_short', { defaultValue: 'WeChat Official Account' })}
+                          {platformLabel(account.platform, t)}
                         </span>
                       </span>
                     </button>
@@ -335,7 +348,7 @@ export default function PlatformAccountsPage() {
                 onClick={() => handleOpenAccount(selectedAccount.id)}
                 loading={busyAccountId === selectedAccount.id}>
                 <ExternalLink size={14} />
-                {t('platform_accounts.open_backend', { defaultValue: 'Open WeChat backend' })}
+                {t('platform_accounts.open_backend', { defaultValue: 'Open creator backend' })}
               </Button>
               <Button
                 size="sm"
@@ -360,15 +373,15 @@ export default function PlatformAccountsPage() {
                 type="warning"
                 showIcon
                 description={t('platform_accounts.binding_hint', {
-                  defaultValue:
-                    'Open the WeChat backend and finish sign-in. Cherry Studio will keep this session isolated.'
+                  defaultValue: 'Complete sign-in in {{platform}}. 晨微 keeps this account in an isolated session.',
+                  platform: platformLabel(selectedAccount.platform, t)
                 })}
               />
             ) : null}
             <PageSidePanelSection title={t('platform_accounts.details', { defaultValue: 'Account details' })}>
               <PageSidePanelItem
                 title={t('platform_accounts.platform', { defaultValue: 'Platform' })}
-                description={t('platform_accounts.wechat_short', { defaultValue: 'WeChat Official Account' })}
+                description={platformLabel(selectedAccount.platform, t)}
               />
               <PageSidePanelItem
                 title={t('platform_accounts.created', { defaultValue: 'Added' })}
@@ -454,36 +467,37 @@ export default function PlatformAccountsPage() {
       <Dialog open={bindingOpen} onOpenChange={setBindingOpen}>
         <DialogContent aria-describedby={undefined} className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {t('platform_accounts.bind_dialog.title', { defaultValue: 'Bind WeChat Official Account' })}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-2 py-4">
-            <label htmlFor="publishing-account-name" className="font-medium text-sm">
-              {t('platform_accounts.account_name', { defaultValue: 'Account name' })}
-            </label>
-            <Input
-              id="publishing-account-name"
-              value={bindingName}
-              onChange={(event) => setBindingName(event.target.value)}
-              placeholder={t('platform_accounts.account_name_placeholder', {
-                defaultValue: 'e.g. Brand Official Account'
+            <DialogTitle>{t('platform_accounts.bind_dialog.title', { defaultValue: 'Select a platform' })}</DialogTitle>
+            <DialogDescription>
+              {t('platform_accounts.bind_dialog.description', {
+                defaultValue: 'Choose the platform account you want to sign in to.'
               })}
-              autoFocus
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') void handleStartBinding()
-              }}
-            />
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 py-3 sm:grid-cols-2">
+            {PUBLISHING_PLATFORMS.map((platform) => {
+              const label = platformLabel(platform, t)
+              const bindingId = `binding:${platform}`
+              return (
+                <Button
+                  key={platform}
+                  type="button"
+                  variant="outline"
+                  className="h-auto justify-start gap-3 px-4 py-3 text-left"
+                  loading={busyAccountId === bindingId}
+                  disabled={busyAccountId?.startsWith('binding:') === true}
+                  onClick={() => void handleStartBinding(platform)}>
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted font-medium">
+                    {label.slice(0, 1)}
+                  </span>
+                  <span className="truncate">{label}</span>
+                </Button>
+              )
+            })}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setBindingOpen(false)}>
               {t('common.cancel')}
-            </Button>
-            <Button
-              onClick={() => void handleStartBinding()}
-              disabled={!bindingName.trim()}
-              loading={busyAccountId === 'binding'}>
-              {t('platform_accounts.continue', { defaultValue: 'Continue to sign in' })}
             </Button>
           </DialogFooter>
         </DialogContent>

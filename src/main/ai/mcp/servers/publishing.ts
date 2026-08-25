@@ -3,14 +3,14 @@ import { loggerService } from '@logger'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
 import { CallToolRequestSchema, ErrorCode, ListToolsRequestSchema, McpError } from '@modelcontextprotocol/sdk/types.js'
-import type { PublishingAccount, PublishingTask } from '@shared/data/types/publishing'
+import { type PublishingAccount, PublishingPlatformSchema, type PublishingTask } from '@shared/data/types/publishing'
 import * as z from 'zod'
 
 const logger = loggerService.withContext('McpServer:Publishing')
 
 const ACCOUNT_ID_SCHEMA = z.strictObject({ accountId: z.string().min(1) })
 const TASK_ID_SCHEMA = z.strictObject({ taskId: z.string().min(1) })
-const START_BINDING_SCHEMA = z.strictObject({ displayName: z.string().trim().min(1).max(120) })
+const START_BINDING_SCHEMA = z.strictObject({ platform: PublishingPlatformSchema })
 const PREPARE_SCHEMA = z.strictObject({
   accountId: z.string().min(1),
   title: z.string().trim().min(1).max(255),
@@ -22,16 +22,22 @@ const PREPARE_SCHEMA = z.strictObject({
 const TOOLS: Tool[] = [
   {
     name: 'list_accounts',
-    description: 'List bound WeChat Official Account identities without exposing session credentials.',
+    description: 'List bound publishing-platform identities without exposing session credentials.',
     inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'start_account_binding',
-    description: 'Create a WeChat Official Account identity and open its isolated login window.',
+    description: 'Create a platform account identity and open its isolated login window.',
     inputSchema: {
       type: 'object',
-      properties: { displayName: { type: 'string', description: 'Human-readable account label.' } },
-      required: ['displayName']
+      properties: {
+        platform: {
+          type: 'string',
+          enum: PublishingPlatformSchema.options,
+          description: 'Publishing platform to sign in to.'
+        }
+      },
+      required: ['platform']
     }
   },
   {
@@ -134,7 +140,7 @@ export class PublishingServer {
             return result({ success: true, accounts: service.listAccounts().map(accountView) })
           case 'start_account_binding': {
             const input = START_BINDING_SCHEMA.parse(args)
-            const account = await service.startAccountBinding(input.displayName)
+            const account = await service.startAccountBinding(input.platform)
             return result({ success: true, ...accountView(account) })
           }
           case 'get_account_status': {

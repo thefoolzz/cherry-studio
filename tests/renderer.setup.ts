@@ -693,6 +693,20 @@ vi.mock('@cherrystudio/ui', () => {
         React.createElement('h2', null, title),
         action
       ),
+    PageSidePanel: ({ children, footer, open, title, ...props }) =>
+      open
+        ? React.createElement(
+            'aside',
+            { ...props, 'data-testid': 'page-side-panel' },
+            title ? React.createElement('h2', null, title) : null,
+            children,
+            footer
+          )
+        : null,
+    PageSidePanelSection: ({ actions, children, title, ...props }) =>
+      React.createElement('section', props, title ? React.createElement('h3', null, title) : null, actions, children),
+    PageSidePanelItem: ({ action, children, description, title, ...props }) =>
+      React.createElement('div', props, title, description, children, action),
     Badge: ({ children, ...props }) => React.createElement('span', { ...props, 'data-testid': 'badge' }, children),
     Separator: (props) => React.createElement('hr', { ...props, 'data-testid': 'separator' }),
     Scrollbar: ({ children, ...props }) =>

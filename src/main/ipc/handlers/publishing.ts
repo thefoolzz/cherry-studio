@@ -3,8 +3,8 @@ import type { publishingRequestSchemas } from '@shared/ipc/schemas/publishing'
 import type { IpcHandlersFor } from '@shared/ipc/types'
 
 export const publishingHandlers: IpcHandlersFor<typeof publishingRequestSchemas> = {
-  'publishing.start_account_binding': ({ displayName, returnTopicId }) =>
-    application.get('PublishingService').startAccountBinding(displayName, returnTopicId),
+  'publishing.start_account_binding': ({ platform, returnTopicId }) =>
+    application.get('PublishingService').startAccountBinding(platform, returnTopicId),
   'publishing.open_account': ({ accountId }) => application.get('PublishingService').openAccount(accountId),
   'publishing.rename_account': ({ accountId, displayName }) =>
     Promise.resolve(application.get('PublishingService').renameAccount(accountId, displayName)),

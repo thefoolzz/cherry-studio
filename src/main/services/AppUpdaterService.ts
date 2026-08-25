@@ -26,7 +26,7 @@ const logger = loggerService.withContext('AppUpdaterService')
 
 type ReleaseRegion = 'cn' | 'global'
 
-const RELEASE_HISTORY_URL = 'https://releases.cherry-ai.com/release-history.json'
+const RELEASE_HISTORY_URL = 'https://github.com/thefoolzz/cherry-studio/releases/latest/download/release-history.json'
 const RELEASE_HISTORY_TIMEOUT_MS = 10_000
 const RELEASE_HISTORY_MAX_BYTES = 1024 * 1024
 

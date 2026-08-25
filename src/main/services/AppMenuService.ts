@@ -14,8 +14,9 @@ import {
   resolveCommandKeybinding,
   resolveMenu
 } from '@shared/utils/command'
+import { APP_DISPLAY_NAME } from '@shared/utils/constants'
 import type { BrowserWindow } from 'electron'
-import { app, Menu, shell } from 'electron'
+import { Menu, shell } from 'electron'
 
 const appMenuCommands: CommandId[] = ['app.settings.open', 'app.zoom.in', 'app.zoom.out', 'app.zoom.reset']
 
@@ -78,11 +79,11 @@ export class AppMenuService extends BaseService {
     const items: NativeMenuItem[] = [
       {
         type: 'submenu',
-        label: app.name,
+        label: APP_DISPLAY_NAME,
         children: [
           {
             type: 'custom',
-            label: t('appMenu.about') + ' ' + app.name,
+            label: t('appMenu.about') + ' ' + APP_DISPLAY_NAME,
             click: () => {
               openSettingsInMainWindow('/settings/about')
             }
@@ -91,11 +92,11 @@ export class AppMenuService extends BaseService {
           { type: 'separator' },
           { type: 'role', role: 'services', label: t('appMenu.services') },
           { type: 'separator' },
-          { type: 'role', role: 'hide', label: `${t('appMenu.hide')} ${app.name}` },
+          { type: 'role', role: 'hide', label: `${t('appMenu.hide')} ${APP_DISPLAY_NAME}` },
           { type: 'role', role: 'hideOthers', label: t('appMenu.hideOthers') },
           { type: 'role', role: 'unhide', label: t('appMenu.unhide') },
           { type: 'separator' },
-          { type: 'role', role: 'quit', label: `${t('appMenu.quit')} ${app.name}` }
+          { type: 'role', role: 'quit', label: `${t('appMenu.quit')} ${APP_DISPLAY_NAME}` }
         ]
       },
       {
@@ -150,28 +151,28 @@ export class AppMenuService extends BaseService {
             type: 'custom',
             label: t('appMenu.website'),
             click: () => {
-              void shell.openExternal('https://cherry-ai.com')
+              void shell.openExternal('https://github.com/thefoolzz/cherry-studio')
             }
           },
           {
             type: 'custom',
             label: t('appMenu.documentation'),
             click: () => {
-              void shell.openExternal('https://cherry-ai.com/docs')
+              void shell.openExternal('https://github.com/thefoolzz/cherry-studio#readme')
             }
           },
           {
             type: 'custom',
             label: t('appMenu.feedback'),
             click: () => {
-              void shell.openExternal('https://github.com/CherryHQ/cherry-studio/issues/new/choose')
+              void shell.openExternal('https://github.com/thefoolzz/cherry-studio/issues/new/choose')
             }
           },
           {
             type: 'custom',
             label: t('appMenu.releases'),
             click: () => {
-              void shell.openExternal('https://github.com/CherryHQ/cherry-studio/releases')
+              void shell.openExternal('https://github.com/thefoolzz/cherry-studio/releases')
             }
           }
         ]

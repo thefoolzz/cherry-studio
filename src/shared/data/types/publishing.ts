@@ -11,7 +11,7 @@ import { FileEntryIdSchema } from './file'
 
 export const PUBLISHING_ASSISTANT_ID = '3a3a1fd2-1d92-4cf2-9f83-8d1a8f529b58'
 
-export const PublishingPlatformSchema = z.enum(['wechat'])
+export const PublishingPlatformSchema = z.enum(['wechat', 'douyin', 'xiaohongshu', 'zhihu'])
 export type PublishingPlatform = z.infer<typeof PublishingPlatformSchema>
 
 export const PublishingAccountStatusSchema = z.enum(['binding', 'ready', 'expired'])

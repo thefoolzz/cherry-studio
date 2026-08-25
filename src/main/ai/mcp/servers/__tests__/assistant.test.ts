@@ -431,7 +431,7 @@ describe('create_agent', () => {
         instructions: 'Review code.',
         model: 'anthropic::missing'
       })
-    ).rejects.toThrow('Model is not configured in Cherry Studio: anthropic::missing')
+    ).rejects.toThrow('Model is not configured in 晨微: anthropic::missing')
     expect(mocks.agentCreate).not.toHaveBeenCalled()
   })
 })

@@ -1,4 +1,9 @@
-import { type PublishingAccount, PublishingAccountSchema, PublishingTaskSchema } from '@shared/data/types/publishing'
+import {
+  type PublishingAccount,
+  PublishingAccountSchema,
+  PublishingPlatformSchema,
+  PublishingTaskSchema
+} from '@shared/data/types/publishing'
 import * as z from 'zod'
 
 import { defineRoute } from '../define'
@@ -9,7 +14,7 @@ const taskId = z.string().min(1)
 export const publishingRequestSchemas = {
   'publishing.start_account_binding': defineRoute({
     input: z.strictObject({
-      displayName: z.string().trim().min(1).max(120),
+      platform: PublishingPlatformSchema,
       returnTopicId: z.string().min(1).optional()
     }),
     output: PublishingAccountSchema

@@ -167,7 +167,7 @@ export const WINDOW_TYPE_REGISTRY: Partial<Record<WindowType, WindowTypeMetadata
     }
   },
 
-  // Isolated WeChat Official Account session. PublishingService owns the page
+  // Isolated publishing-platform session. PublishingService owns the page
   // content and chooses the persisted partition per account before loading it.
   [WindowType.PublishingAccount]: {
     type: WindowType.PublishingAccount,

@@ -19,10 +19,11 @@ type WechatDraftScriptResult = {
 export class WechatPublisher implements PlatformPublisher {
   readonly platform = 'wechat' as const
   readonly homeUrl = 'https://mp.weixin.qq.com/'
+  readonly supportsDrafts = true
   private readonly contentRenderer = new WechatContentRenderer()
 
   getWindowTitle(displayName: string): string {
-    return `${displayName} · 微信公众号`
+    return displayName === '微信公众号' ? displayName : `${displayName} · 微信公众号`
   }
 
   renderMarkdown(source: string): string {

@@ -19,7 +19,7 @@ export const publishingAccountTable = sqliteTable(
   (t) => [
     uniqueIndex('publishing_account_partition_unique_idx').on(t.partition),
     index('publishing_account_platform_status_idx').on(t.platform, t.status),
-    check('publishing_account_platform_check', sql`${t.platform} IN ('wechat')`),
+    check('publishing_account_platform_check', sql`${t.platform} IN ('wechat', 'douyin', 'xiaohongshu', 'zhihu')`),
     check('publishing_account_status_check', sql`${t.status} IN ('binding', 'ready', 'expired')`),
     check('publishing_account_display_name_check', sql`length(trim(${t.displayName})) > 0`),
     check('publishing_account_partition_check', sql`length(trim(${t.partition})) > 0`)

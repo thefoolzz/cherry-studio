@@ -23,7 +23,7 @@ import { useTranslation } from 'react-i18next'
 
 const DiagnosticUploadDialog = lazy(() => import('./DiagnosticUploadDialog'))
 
-export const FEEDBACK_GITHUB_URL = 'https://github.com/CherryHQ/cherry-studio/issues/new/choose'
+export const FEEDBACK_GITHUB_URL = 'https://github.com/thefoolzz/cherry-studio/issues/new/choose'
 
 const logger = loggerService.withContext('FeedbackDialog')
 
@@ -92,7 +92,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
       const { sessionId } = await ipcApi.request('ai.agent.support_session.create')
       openRoute(getFeedbackAgentRoute(sessionId))
     } catch (error) {
-      logger.error('Failed to create Cherry Support feedback session', error as Error)
+      logger.error('Failed to create 晨微 Support feedback session', error as Error)
       toast.error(t('settings.about.feedback.agent_error'))
     }
   }
