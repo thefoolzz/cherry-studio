@@ -1,5 +1,5 @@
 ---
-description: How clients check for updates through the managed release service, with channels and the release history feed
+description: How clients check GitHub Releases for updates, with channels and the release history feed
 sources:
   - src/main/services/AppUpdaterService.ts
   - resources/cherry-studio/release-history.json
@@ -11,15 +11,15 @@ sources:
 
 ## Overview
 
-Cherry Studio clients check for updates through the managed release service at `https://releases.cherry-ai.com`. The client selects an update channel and sends application, client, platform, and region metadata. The release service owns target-version selection, regional mirrors, rollout policy, and required upgrade gateways.
+Cherry Studio clients check for updates from the latest release in `thefoolzz/cherry-studio`. The client selects an update channel and sends application, client, platform, and region metadata. GitHub Releases provides the platform-specific update manifest and its referenced installer or archive.
 
-The in-app release history follows the same managed path. Stable release preparation updates `resources/cherry-studio/release-history.json`, the release workflow publishes that generated file as a release asset, and clients fetch `/release-history.json` through the managed release service. The service selects GitHub or GitCode according to the request region. Each build also bundles the file as an offline fallback.
+Stable release preparation updates `resources/cherry-studio/release-history.json`, and the release workflow publishes that generated file as a release asset. Clients fetch it from the repository's latest GitHub release. Each build also bundles the file as an offline fallback.
 
 ## Update Feed Configuration
 
-- Packaged builds use `publish.url` from `electron-builder.yml`. electron-builder writes this value to the packaged `app-update.yml`.
-- Development builds set `forceDevUpdateConfig = true`, so electron-updater reads `dev-app-update.yml` from the repository root. The default development feed is `http://127.0.0.1:3378`.
-- Production base URL changes take effect through the build configuration in newly produced application builds. The client does not override the packaged feed URL at runtime.
+- Packaged builds use the GitHub provider configured in `electron-builder.yml`. electron-builder writes this value to the packaged `app-update.yml`.
+- Development builds set `forceDevUpdateConfig = true`, so electron-updater reads `dev-app-update.yml` from the repository root. It uses the same `thefoolzz/cherry-studio` GitHub Releases feed.
+- Repository changes take effect in newly produced application builds. The client does not override the packaged feed at runtime.
 
 ## Channels
 
