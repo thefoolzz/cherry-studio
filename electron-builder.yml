@@ -93,7 +93,7 @@ extraResources:
     to: "provider-registry"
 win:
   executableName: Cherry Studio
-  artifactName: ${productName}-${version}-${arch}-setup.${ext}
+  artifactName: CherryStudio-${version}-${arch}-setup.${ext}
   extraResources:
     - from: "node_modules/@aiany/sqlite-vec-windows-${arch}/vec0.dll"
       to: "app.asar.unpacked/node_modules/@aiany/sqlite-vec-windows-${arch}/vec0.dll"
@@ -104,7 +104,7 @@ win:
     sign: scripts/win-sign.js
   verifyUpdateCodeSignature: false
 nsis:
-  artifactName: ${productName}-${version}-${arch}-setup.${ext}
+  artifactName: CherryStudio-${version}-${arch}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
@@ -114,12 +114,12 @@ nsis:
   buildUniversalInstaller: false
   differentialPackage: false
 portable:
-  artifactName: ${productName}-${version}-${arch}-portable.${ext}
+  artifactName: CherryStudio-${version}-${arch}-portable.${ext}
   buildUniversalInstaller: false
 mac:
   entitlementsInherit: build/entitlements.mac.plist
   notarize: false
-  artifactName: ${productName}-${version}-${arch}.${ext}
+  artifactName: CherryStudio-${version}-${arch}.${ext}
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
@@ -131,7 +131,7 @@ mac:
 dmg:
   writeUpdateInfo: false
 linux:
-  artifactName: ${productName}-${version}-${arch}.${ext}
+  artifactName: CherryStudio-${version}-${arch}.${ext}
   executableName: CherryStudio
   target:
     - target: AppImage
