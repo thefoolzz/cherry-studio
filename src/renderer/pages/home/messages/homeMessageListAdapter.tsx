@@ -20,7 +20,8 @@ import {
   type MessageListRuntime,
   type MessageListState,
   type MessageRuntime,
-  type MessageStreamingLayers
+  type MessageStreamingLayers,
+  type MessageTailSlot
 } from '@renderer/components/chat/messages/types'
 import { parseMessagePartId, withMessagePartDiagnosis } from '@renderer/components/chat/messages/utils/messageDiagnosis'
 import {
@@ -67,6 +68,13 @@ import {
 } from './topicImageActionBus'
 
 const logger = loggerService.withContext('HomeMessageListAdapter')
+
+interface PublishingTailCacheEntry {
+  imageFileIdsKey: string
+  markdown: string
+  tail: MessageTailSlot
+  topicName: string
+}
 
 function getGeneratedImageFileIds(parts: CherryMessagePart[]): string[] {
   const ids = new Set<string>()
@@ -152,6 +160,8 @@ export function useHomeMessageListProviderValue({
       }
     >()
   )
+  const publishingTailCacheRef = useRef(new Map<string, PublishingTailCacheEntry>())
+  const publishingMessageTailsRef = useRef<MessageListState['messageTails']>(undefined)
 
   const messageItems = useMemo(() => {
     return messages.map((message) => {
@@ -173,48 +183,76 @@ export function useHomeMessageListProviderValue({
     })
   }, [messages, resolvedAssistantId, topicId])
 
-  const publishingMessageTail = useMemo<MessageListState['messageTail']>(() => {
-    if (assistant?.id !== PUBLISHING_ASSISTANT_ID) return undefined
-
-    const latestMessageIndex = messageItems.findLastIndex((message) => !message.isContextBoundary)
-    if (latestMessageIndex < 0) return undefined
-
-    const latestMessage = messageItems[latestMessageIndex]
-    if (latestMessage.role !== 'assistant' || latestMessage.status !== 'success') return undefined
-
-    // Image generation can finish in a tool-only assistant turn after the
-    // article text was emitted. Treat the assistant messages after the latest
-    // user turn as one publishing turn so those images stay attached to it.
-    const latestUserIndex = messageItems.findLastIndex(
-      (message, index) => index < latestMessageIndex && message.role === 'user' && !message.isContextBoundary
-    )
-    const turnMessages = messageItems.slice(latestUserIndex + 1, latestMessageIndex + 1)
-    const articleMessage = turnMessages.findLast((message) => {
-      if (message.role !== 'assistant' || message.status !== 'success') return false
-      return getComposerTextFromParts(partsByMessageId[message.id] ?? []).trim().length > 0
-    })
-    if (!articleMessage) return undefined
-
-    const articleParts = partsByMessageId[articleMessage.id] ?? []
-    const markdown = getComposerTextFromParts(articleParts)
-    const imageFileIds = [
-      ...new Set([
-        ...getAttachmentFileIds(markdown),
-        ...turnMessages.flatMap((message) => getGeneratedImageFileIds(partsByMessageId[message.id] ?? []))
-      ])
-    ]
-    if (!markdown.trim()) return undefined
-
-    return {
-      messageId: latestMessage.id,
-      content: (
-        <PublishingDraftAction
-          markdown={markdown}
-          topicName={topic.name}
-          imageFileIds={imageFileIds}
-        />
-      )
+  const publishingMessageTails = useMemo<MessageListState['messageTails']>(() => {
+    if (assistant?.id !== PUBLISHING_ASSISTANT_ID) {
+      publishingTailCacheRef.current.clear()
+      publishingMessageTailsRef.current = undefined
+      return undefined
     }
+
+    const nextCache = new Map<string, PublishingTailCacheEntry>()
+    const tails: MessageTailSlot[] = []
+    let turnStart = 0
+
+    const appendPublishingTurn = (turnEnd: number) => {
+      const turnMessages = messageItems.slice(turnStart, turnEnd)
+      const latestMessage = turnMessages.findLast((message) => !message.isContextBoundary)
+      if (!latestMessage || latestMessage.role !== 'assistant' || latestMessage.status !== 'success') return
+
+      // Image generation can finish in a tool-only assistant message after the
+      // article text. Keep every assistant message in the user turn attached.
+      const articleMessage = turnMessages.findLast((message) => {
+        if (message.role !== 'assistant' || message.status !== 'success') return false
+        return getComposerTextFromParts(partsByMessageId[message.id] ?? []).trim().length > 0
+      })
+      if (!articleMessage) return
+
+      const markdown = getComposerTextFromParts(partsByMessageId[articleMessage.id] ?? [])
+      if (!markdown.trim()) return
+
+      const imageFileIds = [
+        ...new Set([
+          ...getAttachmentFileIds(markdown),
+          ...turnMessages.flatMap((message) => getGeneratedImageFileIds(partsByMessageId[message.id] ?? []))
+        ])
+      ]
+      const imageFileIdsKey = JSON.stringify(imageFileIds)
+      const cached = publishingTailCacheRef.current.get(articleMessage.id)
+      const tail =
+        cached?.markdown === markdown && cached.imageFileIdsKey === imageFileIdsKey && cached.topicName === topic.name
+          ? cached.tail
+          : {
+              messageId: articleMessage.id,
+              content: (
+                <PublishingDraftAction
+                  key={articleMessage.id}
+                  markdown={markdown}
+                  topicName={topic.name}
+                  imageFileIds={imageFileIds}
+                />
+              )
+            }
+      nextCache.set(articleMessage.id, { imageFileIdsKey, markdown, tail, topicName: topic.name })
+      tails.push(tail)
+    }
+
+    for (let index = 0; index <= messageItems.length; index += 1) {
+      const message = messageItems[index]
+      if (index < messageItems.length && message?.role !== 'user' && !message?.isContextBoundary) continue
+
+      appendPublishingTurn(index)
+      turnStart = index + 1
+    }
+
+    publishingTailCacheRef.current = nextCache
+    const previousTails = publishingMessageTailsRef.current
+    if (previousTails?.length === tails.length && previousTails.every((tail, index) => tail === tails[index])) {
+      return previousTails
+    }
+
+    const nextTails = tails.length > 0 ? tails : undefined
+    publishingMessageTailsRef.current = nextTails
+    return nextTails
   }, [assistant?.id, messageItems, partsByMessageId, topic.name])
 
   const messagesRef = useRef<MessageListItem[]>(messageItems)
@@ -838,7 +876,7 @@ export function useHomeMessageListProviderValue({
       messages: messageItems,
       partsByMessageId,
       streamingLayers,
-      messageTail: publishingMessageTail,
+      messageTails: publishingMessageTails,
       isInitialLoading,
       isMessagesStale,
       hasOlder,
@@ -873,7 +911,7 @@ export function useHomeMessageListProviderValue({
       messageItems,
       messageNavigation,
       partsByMessageId,
-      publishingMessageTail,
+      publishingMessageTails,
       renderConfig,
       resolvedAssistantId,
       selectionController.selection,

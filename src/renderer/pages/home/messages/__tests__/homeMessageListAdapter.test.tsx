@@ -219,9 +219,15 @@ vi.mock('@renderer/utils/message/composerTokens', () => ({
 }))
 
 vi.mock('../PublishingDraftAction', () => ({
-  PublishingDraftAction: (props: { imageFileIds: string[] }) => {
+  PublishingDraftAction: (props: { imageFileIds: string[]; markdown: string }) => {
     publishingDraftActionMock(props)
-    return <div data-testid="publishing-draft-action" data-image-file-ids={JSON.stringify(props.imageFileIds)} />
+    return (
+      <div
+        data-testid="publishing-draft-action"
+        data-image-file-ids={JSON.stringify(props.imageFileIds)}
+        data-markdown={props.markdown}
+      />
+    )
   }
 }))
 
@@ -412,12 +418,50 @@ describe('useHomeMessageListProviderValue topic image actions', () => {
         onValue={(nextValue) => (value = nextValue)}
       />
     )
-    render(<>{value?.state.messageTail?.content}</>)
+    render(<>{value?.state.messageTails?.map((tail) => tail.content)}</>)
 
     expect(screen.getByTestId('publishing-draft-action')).toHaveAttribute(
       'data-image-file-ids',
       JSON.stringify(['cover-file-id', 'body-file-id'])
     )
+  })
+
+  it('adds an independent publishing action after every completed article turn', () => {
+    getComposerTextFromPartsMock.mockImplementation((parts?: CherryMessagePart[]) =>
+      (parts ?? []).flatMap((part) => (part.type === 'text' ? [part.text] : [])).join('')
+    )
+    const topic = { ...createTopic('topic-a'), assistantId: PUBLISHING_ASSISTANT_ID }
+    const messages = [
+      { id: 'user-1', topicId: topic.id, role: 'user', status: 'success' },
+      { id: 'assistant-article-1', topicId: topic.id, role: 'assistant', status: 'success' },
+      { id: 'user-2', topicId: topic.id, role: 'user', status: 'success' },
+      { id: 'assistant-article-2', topicId: topic.id, role: 'assistant', status: 'success' }
+    ] as unknown as CherryUIMessage[]
+    const partsByMessageId = {
+      'assistant-article-1': [{ type: 'text', text: '# First article\n\nFirst body' }] as CherryMessagePart[],
+      'assistant-article-2': [{ type: 'text', text: '# Second article\n\nSecond body' }] as CherryMessagePart[]
+    }
+    let value: MessageListProviderValue | undefined
+
+    render(
+      <MessageListAdapterHarness
+        topic={topic}
+        assistantId={PUBLISHING_ASSISTANT_ID}
+        messages={messages}
+        partsByMessageId={partsByMessageId}
+        onValue={(nextValue) => (value = nextValue)}
+      />
+    )
+    render(<>{value?.state.messageTails?.map((tail) => tail.content)}</>)
+
+    expect(value?.state.messageTails?.map((tail) => tail.messageId)).toEqual([
+      'assistant-article-1',
+      'assistant-article-2'
+    ])
+    expect(screen.getAllByTestId('publishing-draft-action').map((action) => action.dataset.markdown)).toEqual([
+      '# First article\n\nFirst body',
+      '# Second article\n\nSecond body'
+    ])
   })
 
   it('injects Home-message diagnosis persistence into the shared error UI', async () => {

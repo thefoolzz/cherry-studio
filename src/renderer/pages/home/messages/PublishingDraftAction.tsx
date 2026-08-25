@@ -17,9 +17,11 @@ import { openRoute } from '@renderer/services/mainWindowNavigation'
 import { toast } from '@renderer/services/toast'
 import type { PublishingAccount } from '@shared/data/types/publishing'
 import { parsePublishingContentDraft } from '@shared/utils/publishing'
-import { CircleAlert, Send } from 'lucide-react'
+import { CircleAlert, PencilLine, Send } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+
+import { type PublishingArticleDraft, PublishingArticleEditorDialog } from './PublishingArticleEditorDialog'
 
 const logger = loggerService.withContext('PublishingDraftAction')
 const EMPTY_ACCOUNTS: readonly PublishingAccount[] = Object.freeze([])
@@ -47,11 +49,22 @@ export function PublishingDraftAction({ markdown, topicName, imageFileIds = [] }
   const [selectedAccountId, setSelectedAccountId] = useState('')
   const [title, setTitle] = useState('')
   const [busy, setBusy] = useState(false)
-  const [published, setPublished] = useState(false)
+  const [publishedSource, setPublishedSource] = useState<string | null>(null)
+  const [savedDraft, setSavedDraft] = useState<{ source: string; draft: PublishingArticleDraft } | null>(null)
+  const [editingDraft, setEditingDraft] = useState<PublishingArticleDraft | null>(null)
   const { data, isLoading } = useQuery('/publishing-accounts', {
     query: { platform: 'wechat', status: 'ready', limit: 200 }
   })
   const contentDraft = useMemo(() => parsePublishingContentDraft(markdown), [markdown])
+  const initialArticleDraft = useMemo<PublishingArticleDraft>(
+    () => ({
+      title:
+        contentDraft.title ?? extractArticleTitle(contentDraft.markdown, topicName, t('chat.publishing.default_title')),
+      markdown: contentDraft.markdown
+    }),
+    [contentDraft, t, topicName]
+  )
+  const articleDraft = savedDraft?.source === markdown ? savedDraft.draft : initialArticleDraft
   const accounts = data?.items ?? EMPTY_ACCOUNTS
   const selectedAccount = useMemo(
     () => accounts.find((account) => account.id === selectedAccountId),
@@ -59,12 +72,10 @@ export function PublishingDraftAction({ markdown, topicName, imageFileIds = [] }
   )
 
   const handleOpen = useCallback(() => {
-    setTitle(
-      contentDraft.title ?? extractArticleTitle(contentDraft.markdown, topicName, t('chat.publishing.default_title'))
-    )
+    setTitle(articleDraft.title)
     setSelectedAccountId(accounts[0]?.id ?? '')
     setOpen(true)
-  }, [accounts, contentDraft, t, topicName])
+  }, [accounts, articleDraft.title])
 
   const handlePublish = useCallback(async () => {
     if (!selectedAccount || !title.trim()) return
@@ -74,7 +85,7 @@ export function PublishingDraftAction({ markdown, topicName, imageFileIds = [] }
       const prepared = await ipcApi.request('publishing.prepare_draft', {
         accountId: selectedAccount.id,
         title: title.trim(),
-        markdown: contentDraft.markdown,
+        markdown: articleDraft.markdown,
         ...(imageFileIds.length > 0 ? { bodyImageFileIds: imageFileIds } : {})
       })
       const task = await ipcApi.request('publishing.create_draft', { taskId: prepared.id })
@@ -82,7 +93,7 @@ export function PublishingDraftAction({ markdown, topicName, imageFileIds = [] }
         throw new Error(task.error ?? t('chat.publishing.failed'))
       }
 
-      setPublished(true)
+      setPublishedSource(markdown)
       setOpen(false)
       toast.success(t('chat.publishing.success'))
     } catch (error) {
@@ -91,19 +102,34 @@ export function PublishingDraftAction({ markdown, topicName, imageFileIds = [] }
     } finally {
       setBusy(false)
     }
-  }, [contentDraft.markdown, imageFileIds, selectedAccount, title, t])
+  }, [articleDraft.markdown, imageFileIds, markdown, selectedAccount, title, t])
 
-  if (published || contentDraft.markdown.length < 20) return null
+  if (publishedSource === markdown || contentDraft.markdown.length < 20) return null
 
   return (
     <>
       <div className="mt-3 flex flex-wrap items-center gap-2 border-border-subtle border-t pt-3">
+        <Button variant="outline" size="sm" onClick={() => setEditingDraft(articleDraft)}>
+          <PencilLine size={14} />
+          {t('common.edit')}
+        </Button>
         <Button size="sm" onClick={handleOpen} disabled={isLoading}>
           <Send size={14} />
           {t('chat.publishing.confirm')}
         </Button>
         <span className="text-muted-foreground text-xs">{t('chat.publishing.hint')}</span>
       </div>
+
+      {editingDraft && (
+        <PublishingArticleEditorDialog
+          draft={editingDraft}
+          onCancel={() => setEditingDraft(null)}
+          onSave={(draft) => {
+            setSavedDraft({ source: markdown, draft })
+            setEditingDraft(null)
+          }}
+        />
+      )}
 
       <Dialog open={open} onOpenChange={(nextOpen) => !busy && setOpen(nextOpen)}>
         <DialogContent aria-describedby={undefined} className="sm:max-w-md">

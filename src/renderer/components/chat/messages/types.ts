@@ -282,8 +282,8 @@ export interface MessageListState {
   /** When provided, streaming updates stay isolated from historical message subtrees. */
   streamingLayers?: MessageStreamingLayers
   beforeList?: ReactNode
-  /** Optional adapter-owned content rendered after one message's body. */
-  messageTail?: MessageTailSlot
+  /** Optional adapter-owned content rendered after specific message bodies. */
+  messageTails?: readonly MessageTailSlot[]
   /** Renders the live turn's processing status inline, replacing the default placeholder. Receives
    *  that placeholder as a fallback, so an override (e.g. an ephemeral agent api-retry line) can take
    *  over while active and fall back to the placeholder otherwise. Called only in the message that owns

@@ -536,28 +536,31 @@ describe('MessageGroup', () => {
     expect(contentContainer.style.width).toBe('')
   })
 
-  it('renders adapter-owned tail content only after its target assistant message', () => {
+  it('renders adapter-owned tail content after each target assistant message', () => {
     const messages = [createMessage('msg-1', 0, 'vertical'), createMessage('msg-2', 1, 'vertical')]
 
     const { container } = render(
       <MessageGroup
         messages={messages}
-        messageTail={{ messageId: 'msg-2', content: <div data-testid="message-tail">background tasks</div> }}
+        messageTails={[
+          { messageId: 'msg-1', content: <div data-testid="message-tail-1">first tail</div> },
+          { messageId: 'msg-2', content: <div data-testid="message-tail-2">second tail</div> }
+        ]}
       />
     )
 
-    expect(container.querySelector('#message-msg-1 [data-testid="message-tail"]')).toBeNull()
-    expect(container.querySelector('#message-msg-2 [data-testid="message-tail"]')).toHaveTextContent('background tasks')
+    expect(container.querySelector('#message-msg-1 [data-testid="message-tail-1"]')).toHaveTextContent('first tail')
+    expect(container.querySelector('#message-msg-2 [data-testid="message-tail-2"]')).toHaveTextContent('second tail')
   })
 
   it('moves adapter-owned tail content without leaving the previous message memoized', () => {
     const messages = [createMessage('msg-1', 0, 'vertical'), createMessage('msg-2', 1, 'vertical')]
     const tailContent = <div data-testid="message-tail">background tasks</div>
     const { container, rerender } = render(
-      <MessageGroup messages={messages} messageTail={{ messageId: 'msg-1', content: tailContent }} />
+      <MessageGroup messages={messages} messageTails={[{ messageId: 'msg-1', content: tailContent }]} />
     )
 
-    rerender(<MessageGroup messages={messages} messageTail={{ messageId: 'msg-2', content: tailContent }} />)
+    rerender(<MessageGroup messages={messages} messageTails={[{ messageId: 'msg-2', content: tailContent }]} />)
 
     expect(container.querySelector('#message-msg-1 [data-testid="message-tail"]')).toBeNull()
     expect(container.querySelector('#message-msg-2 [data-testid="message-tail"]')).toHaveTextContent('background tasks')

@@ -35,7 +35,7 @@ import {
   useMessageListUi,
   useMessageRenderConfig
 } from './MessageListProvider'
-import { defaultMessageRenderConfig } from './types'
+import { defaultMessageRenderConfig, type MessageTailSlot } from './types'
 import { getLatestAssistantGroupKey } from './utils/messageGroupKey'
 import { shouldUseWideLayoutForMessageGroup } from './utils/messageGroupLayout'
 import { getDirectAssistantModelsByUserId, shareDirectAssistantModelsByUserId } from './utils/messageListItem'
@@ -164,7 +164,7 @@ const MessageLayer = memo(MessageGroupLayer, (previous, next) => {
     previous.registerMessageElement === next.registerMessageElement &&
     previous.isLatestAssistantGroup === next.isLatestAssistantGroup &&
     previous.directAssistantModelsByUserId === next.directAssistantModelsByUserId &&
-    previous.messageTail === next.messageTail
+    previous.messageTails === next.messageTails
   )
 })
 
@@ -185,7 +185,7 @@ const MessageList = ({ enableSearch = false }: MessageListProps) => {
   // message column; this component both writes it (via the resize observer
   // below) and renders from it.
   const { setForceWideLayout, railGutterPx, setRailGutterPx } = useChatLayoutMode()
-  const { topic, messages, beforeList, messageTail, hasOlder = false, messageNavigation } = data
+  const { topic, messages, beforeList, messageTails, hasOlder = false, messageNavigation } = data
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const { setTimeoutTimer } = useTimer()
   const isMultiSelectMode = selection?.isMultiSelectMode ?? false
@@ -211,6 +211,20 @@ const MessageList = ({ enableSearch = false }: MessageListProps) => {
 
   const groupedMessagesCacheRef = useRef(createStableGroupedMessagesCache())
   const groupedMessages = useMemo(() => stableGroupedMessages(messages, groupedMessagesCacheRef.current), [messages])
+  const messageTailsByGroupKey = useMemo(() => {
+    const tailByMessageId = new Map(messageTails?.map((tail) => [tail.messageId, tail]))
+    const tailsByGroupKey = new Map<string, readonly MessageTailSlot[]>()
+
+    for (const [key, groupMessages] of groupedMessages) {
+      const groupTails = groupMessages.flatMap((message) => {
+        const tail = tailByMessageId.get(message.id)
+        return tail ? [tail] : []
+      })
+      if (groupTails.length > 0) tailsByGroupKey.set(key, groupTails)
+    }
+
+    return tailsByGroupKey
+  }, [groupedMessages, messageTails])
   // Streaming allocates a fresh `messages` array per chunk, so the anchor rail
   // needs a projection that only changes when its topology does — otherwise its
   // `memo` never bails and every chunk re-renders all of its ticks.
@@ -769,10 +783,6 @@ const MessageList = ({ enableSearch = false }: MessageListProps) => {
             onScrollContainerReady={handleScrollContainerReady}
             onReachTop={loadMoreMessages}
             renderItem={([key, groupMessages], index) => {
-              const groupMessageTail =
-                messageTail && groupMessages.some((message) => message.id === messageTail.messageId)
-                  ? messageTail
-                  : undefined
               const props: MessageGroupLayerProps = {
                 groupKey: key,
                 isLive: index >= firstLiveGroupIndex,
@@ -780,7 +790,7 @@ const MessageList = ({ enableSearch = false }: MessageListProps) => {
                 railGutterPx,
                 isLatestAssistantGroup: key === latestAssistantGroupKey,
                 directAssistantModelsByUserId,
-                messageTail: groupMessageTail,
+                messageTails: messageTailsByGroupKey.get(key),
                 messages: groupMessages,
                 partsByMessageId:
                   index < firstLiveGroupIndex && streamingLayers
