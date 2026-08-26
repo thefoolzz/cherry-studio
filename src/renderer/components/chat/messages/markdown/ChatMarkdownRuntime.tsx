@@ -60,6 +60,15 @@ const ChatMarkdownRuntime: FC<ChatMarkdownRuntimeProps> = ({
       ? transformMarkdownOutsideHtmlArtifacts(block.content, transform)
       : transform(block.content)
   }, [block.status, block.content, inlineHtmlPreviewMode, postProcess, t])
+  // Streamdown treats a stable block id as append-only, so terminal rewrites need a fresh internal identity.
+  const previousContentRef = useRef(content)
+  const terminalRewriteRevisionRef = useRef(0)
+  if (!isStreaming && !content.startsWith(previousContentRef.current)) {
+    terminalRewriteRevisionRef.current += 1
+  }
+  previousContentRef.current = content
+  const markdownRendererId =
+    terminalRewriteRevisionRef.current === 0 ? block.id : `${block.id}-revision-${terminalRewriteRevisionRef.current}`
 
   const hasStyleElement = STYLE_ELEMENT_REGEX.test(content)
   const citationRegistry = useMemo(() => {
@@ -76,7 +85,8 @@ const ChatMarkdownRuntime: FC<ChatMarkdownRuntimeProps> = ({
 
   const renderer = hasStreamedRef.current ? (
     <StreamingMarkdown
-      id={block.id}
+      key={markdownRendererId}
+      id={markdownRendererId}
       plugins={plugins}
       remarkPlugins={remarkPlugins}
       components={mergedComponents}
@@ -87,7 +97,8 @@ const ChatMarkdownRuntime: FC<ChatMarkdownRuntimeProps> = ({
     </StreamingMarkdown>
   ) : (
     <Markdown
-      id={block.id}
+      key={markdownRendererId}
+      id={markdownRendererId}
       plugins={plugins}
       remarkPlugins={remarkPlugins}
       components={mergedComponents}

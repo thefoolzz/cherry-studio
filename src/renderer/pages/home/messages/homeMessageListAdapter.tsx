@@ -31,7 +31,7 @@ import {
 } from '@renderer/components/chat/messages/utils/messageImageRuntimeActions'
 import { getMessageListItemModel, toMessageListItem } from '@renderer/components/chat/messages/utils/messageListItem'
 import { ModelSelector } from '@renderer/components/ModelSelector'
-import { useChatWrite } from '@renderer/hooks/chat/ChatWriteContext'
+import { type ChatWriteActions, useChatWrite } from '@renderer/hooks/chat/ChatWriteContext'
 import { useCommandHandler } from '@renderer/hooks/command'
 import { SiblingsContext } from '@renderer/hooks/SiblingsContext'
 import { useLanguages } from '@renderer/hooks/translate'
@@ -46,6 +46,10 @@ import { formatErrorMessageWithPrefix, isAbortError } from '@renderer/utils/erro
 import type { DiagnosisResult } from '@renderer/utils/errorDiagnosis'
 import { createComposerRichClipboardContentFromParts } from '@renderer/utils/message/composerClipboard'
 import { getComposerTextFromParts } from '@renderer/utils/message/composerTokens'
+import {
+  canEditAssistantMessageParts,
+  replaceAssistantEditableMessageParts
+} from '@renderer/utils/message/partsHelpers'
 import { isVisionModel } from '@renderer/utils/model'
 import { translateText } from '@renderer/utils/translate'
 import { generateImageOutputSchema } from '@shared/ai/builtinTools'
@@ -58,6 +62,7 @@ import { getToolName, isToolUIPart } from 'ai'
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import type { PublishingArticleDraft } from './PublishingArticleEditorDialog'
 import { PublishingDraftAction } from './PublishingDraftAction'
 import {
   consumePendingTopicImageActions,
@@ -70,6 +75,8 @@ import {
 const logger = loggerService.withContext('HomeMessageListAdapter')
 
 interface PublishingTailCacheEntry {
+  articleParts: CherryMessagePart[]
+  chatWrite: ChatWriteActions | null
   imageFileIdsKey: string
   markdown: string
   tail: MessageTailSlot
@@ -207,7 +214,8 @@ export function useHomeMessageListProviderValue({
       })
       if (!articleMessage) return
 
-      const markdown = getComposerTextFromParts(partsByMessageId[articleMessage.id] ?? [])
+      const articleParts = partsByMessageId[articleMessage.id] ?? []
+      const markdown = getComposerTextFromParts(articleParts)
       if (!markdown.trim()) return
 
       const imageFileIds = [
@@ -219,7 +227,11 @@ export function useHomeMessageListProviderValue({
       const imageFileIdsKey = JSON.stringify(imageFileIds)
       const cached = publishingTailCacheRef.current.get(articleMessage.id)
       const tail =
-        cached?.markdown === markdown && cached.imageFileIdsKey === imageFileIdsKey && cached.topicName === topic.name
+        cached?.markdown === markdown &&
+        cached.articleParts === articleParts &&
+        cached.chatWrite === chatWrite &&
+        cached.imageFileIdsKey === imageFileIdsKey &&
+        cached.topicName === topic.name
           ? cached.tail
           : {
               messageId: articleMessage.id,
@@ -229,10 +241,29 @@ export function useHomeMessageListProviderValue({
                   markdown={markdown}
                   topicName={topic.name}
                   imageFileIds={imageFileIds}
+                  onSaveDraft={async (draft: PublishingArticleDraft) => {
+                    if (!chatWrite || !canEditAssistantMessageParts(articleParts)) {
+                      throw new Error(t('message.error.operation_unavailable'))
+                    }
+                    const editedParts = [
+                      { type: 'text', text: `# ${draft.title}\n\n${draft.markdown}` } as CherryMessagePart
+                    ]
+                    await chatWrite.editMessage(
+                      articleMessage.id,
+                      replaceAssistantEditableMessageParts(articleParts, editedParts)
+                    )
+                  }}
                 />
               )
             }
-      nextCache.set(articleMessage.id, { imageFileIdsKey, markdown, tail, topicName: topic.name })
+      nextCache.set(articleMessage.id, {
+        articleParts,
+        chatWrite,
+        imageFileIdsKey,
+        markdown,
+        tail,
+        topicName: topic.name
+      })
       tails.push(tail)
     }
 
@@ -253,7 +284,7 @@ export function useHomeMessageListProviderValue({
     const nextTails = tails.length > 0 ? tails : undefined
     publishingMessageTailsRef.current = nextTails
     return nextTails
-  }, [assistant?.id, messageItems, partsByMessageId, topic.name])
+  }, [assistant?.id, chatWrite, messageItems, partsByMessageId, t, topic.name])
 
   const messagesRef = useRef<MessageListItem[]>(messageItems)
   const partsByMessageIdRef = useRef(partsByMessageId)

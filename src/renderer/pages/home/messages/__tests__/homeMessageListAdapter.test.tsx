@@ -3,6 +3,7 @@ import type { CherryMessagePart, CherryUIMessage } from '@shared/data/types/mess
 import { PUBLISHING_ASSISTANT_ID } from '@shared/data/types/publishing'
 import { mockUseMutation } from '@test-mocks/renderer/useDataApi'
 import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { type ReactNode, useEffect } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -51,7 +52,7 @@ const { refetchTranslationLanguagesMock, useLanguagesMock } = vi.hoisted(() => {
 })
 const useMessageErrorActionsMock = vi.hoisted(() => vi.fn<(options?: unknown) => Record<string, never>>(() => ({})))
 const openRouteMock = vi.hoisted(() => vi.fn())
-const getComposerTextFromPartsMock = vi.hoisted(() => vi.fn((_parts: CherryMessagePart[] = []) => ''))
+const getComposerTextFromPartsMock = vi.hoisted(() => vi.fn<(parts?: CherryMessagePart[]) => string>(() => ''))
 const publishingDraftActionMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@data/DataApiService', () => ({
@@ -219,14 +220,23 @@ vi.mock('@renderer/utils/message/composerTokens', () => ({
 }))
 
 vi.mock('../PublishingDraftAction', () => ({
-  PublishingDraftAction: (props: { imageFileIds: string[]; markdown: string }) => {
+  PublishingDraftAction: (props: {
+    imageFileIds: string[]
+    markdown: string
+    onSaveDraft: (draft: { title: string; markdown: string }) => Promise<void>
+  }) => {
     publishingDraftActionMock(props)
     return (
       <div
         data-testid="publishing-draft-action"
         data-image-file-ids={JSON.stringify(props.imageFileIds)}
-        data-markdown={props.markdown}
-      />
+        data-markdown={props.markdown}>
+        <button
+          type="button"
+          onClick={() => void props.onSaveDraft({ title: 'Edited title', markdown: 'Edited body' })}>
+          Save edited article
+        </button>
+      </div>
     )
   }
 }))
@@ -461,6 +471,52 @@ describe('useHomeMessageListProviderValue topic image actions', () => {
     expect(screen.getAllByTestId('publishing-draft-action').map((action) => action.dataset.markdown)).toEqual([
       '# First article\n\nFirst body',
       '# Second article\n\nSecond body'
+    ])
+  })
+
+  it('persists article edits back to the source assistant message', async () => {
+    const user = userEvent.setup()
+    getComposerTextFromPartsMock.mockImplementation((parts?: CherryMessagePart[]) =>
+      (parts ?? []).flatMap((part) => (part.type === 'text' ? [part.text] : [])).join('')
+    )
+    const topic = { ...createTopic('topic-a'), assistantId: PUBLISHING_ASSISTANT_ID }
+    const reasoning = { type: 'reasoning', text: 'reasoning' } as CherryMessagePart
+    const translation = {
+      type: 'data-translation',
+      data: { content: 'Old translation', targetLanguage: 'en-us' }
+    } as CherryMessagePart
+    const citation = { type: 'data-citation', data: { url: 'https://example.com' } } as unknown as CherryMessagePart
+    const messages = [
+      { id: 'user-1', topicId: topic.id, role: 'user', status: 'success' },
+      { id: 'assistant-article', topicId: topic.id, role: 'assistant', status: 'success' }
+    ] as unknown as CherryUIMessage[]
+    const partsByMessageId = {
+      'assistant-article': [
+        reasoning,
+        { type: 'text', text: '# Original title\n\nOriginal body' } as CherryMessagePart,
+        translation,
+        citation
+      ]
+    }
+    let value: MessageListProviderValue | undefined
+
+    render(
+      <MessageListAdapterHarness
+        topic={topic}
+        assistantId={PUBLISHING_ASSISTANT_ID}
+        messages={messages}
+        partsByMessageId={partsByMessageId}
+        onValue={(nextValue) => (value = nextValue)}
+      />
+    )
+    render(<>{value?.state.messageTails?.[0]?.content}</>)
+
+    await user.click(screen.getByRole('button', { name: 'Save edited article' }))
+
+    expect(chatWriteMock.editMessage).toHaveBeenCalledWith('assistant-article', [
+      reasoning,
+      { type: 'text', text: '# Edited title\n\nEdited body' },
+      citation
     ])
   })
 

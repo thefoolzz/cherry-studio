@@ -55,6 +55,7 @@ export function hasTranslationParts(parts: CherryMessagePart[]): boolean {
 }
 
 type TextMessagePart = Extract<CherryMessagePart, { type: 'text' }>
+const isComposerEditableMessagePart = (part: CherryMessagePart) => part.type === 'text' || part.type === 'file'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -145,6 +146,24 @@ export function canEditAssistantMessageParts(parts: CherryMessagePart[]): boolea
   }
 
   return hasText
+}
+
+/**
+ * Replace the editable text/file run in an assistant message while preserving reasoning,
+ * tool results, citations, and other non-editable parts. Derived translations are removed.
+ */
+export function replaceAssistantEditableMessageParts(
+  originalParts: CherryMessagePart[],
+  editedParts: CherryMessagePart[]
+): CherryMessagePart[] {
+  const firstEditablePartIndex = originalParts.findIndex(isComposerEditableMessagePart)
+  if (firstEditablePartIndex === -1) return editedParts
+
+  return originalParts.flatMap((part, index) => {
+    if (part.type === 'data-translation') return []
+    if (!isComposerEditableMessagePart(part)) return [part]
+    return index === firstEditablePartIndex ? editedParts : []
+  })
 }
 
 /**

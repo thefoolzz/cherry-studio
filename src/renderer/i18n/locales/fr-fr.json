@@ -717,7 +717,7 @@
   "chat.publishing.dialog.submit": "Create draft",
   "chat.publishing.dialog.title": "Choose a publishing account",
   "chat.publishing.editor.content": "Contenu de l’article",
-  "chat.publishing.editor.description": "Les modifications s’appliquent uniquement à ce brouillon et ne modifient pas la conversation.",
+  "chat.publishing.editor.description": "Les modifications sont synchronisées avec cet article et utilisées pour sa publication, sans affecter les autres articles.",
   "chat.publishing.editor.placeholder": "Rédigez le contenu de l’article...",
   "chat.publishing.editor.title": "Modifier l’article",
   "chat.publishing.failed": "Failed to create the WeChat draft",

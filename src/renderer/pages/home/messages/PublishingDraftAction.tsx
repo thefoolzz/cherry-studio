@@ -41,9 +41,15 @@ interface PublishingDraftActionProps {
   markdown: string
   topicName: string
   imageFileIds?: string[]
+  onSaveDraft: (draft: PublishingArticleDraft) => Promise<void>
 }
 
-export function PublishingDraftAction({ markdown, topicName, imageFileIds = [] }: PublishingDraftActionProps) {
+export function PublishingDraftAction({
+  markdown,
+  topicName,
+  imageFileIds = [],
+  onSaveDraft
+}: PublishingDraftActionProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [selectedAccountId, setSelectedAccountId] = useState('')
@@ -124,9 +130,15 @@ export function PublishingDraftAction({ markdown, topicName, imageFileIds = [] }
         <PublishingArticleEditorDialog
           draft={editingDraft}
           onCancel={() => setEditingDraft(null)}
-          onSave={(draft) => {
-            setSavedDraft({ source: markdown, draft })
-            setEditingDraft(null)
+          onSave={async (draft) => {
+            try {
+              await onSaveDraft(draft)
+              setSavedDraft({ source: markdown, draft })
+              setEditingDraft(null)
+            } catch (error) {
+              logger.error('Failed to save publishing article edits', error as Error)
+              toast.error(error instanceof Error ? error.message : t('message.error.operation_unavailable'))
+            }
           }}
         />
       )}

@@ -1,7 +1,7 @@
 import type { CherryMessagePart } from '@shared/data/types/message'
 import { describe, expect, it } from 'vitest'
 
-import { canEditAssistantMessageParts } from '../partsHelpers'
+import { canEditAssistantMessageParts, replaceAssistantEditableMessageParts } from '../partsHelpers'
 
 const parts = (...items: Array<Record<string, unknown>>) => items as CherryMessagePart[]
 
@@ -175,5 +175,28 @@ describe('canEditAssistantMessageParts', () => {
     { messageParts: parts({ type: 'reasoning', text: 'reasoning only' }) }
   ])('rejects parts that Composer cannot safely write back', ({ messageParts }) => {
     expect(canEditAssistantMessageParts(messageParts)).toBe(false)
+  })
+})
+
+describe('replaceAssistantEditableMessageParts', () => {
+  it('replaces editable parts, preserves tool output, and removes stale translations', () => {
+    const reasoning = { type: 'reasoning', text: 'reasoning' }
+    const tool = { type: 'dynamic-tool', toolCallId: 'tool-1', toolName: 'generate_image', state: 'output-available' }
+    const citation = { type: 'data-citation', data: { url: 'https://example.com' } }
+    const editedParts = parts({ type: 'text', text: '# Edited title\n\nEdited body' })
+
+    expect(
+      replaceAssistantEditableMessageParts(
+        parts(
+          reasoning,
+          { type: 'text', text: 'Old title' },
+          { type: 'file', mediaType: 'image/png', url: 'file:///old.png' },
+          tool,
+          { type: 'data-translation', data: { content: 'Old translation', targetLanguage: 'en-us' } },
+          citation
+        ),
+        editedParts
+      )
+    ).toEqual([reasoning, ...editedParts, tool, citation])
   })
 })

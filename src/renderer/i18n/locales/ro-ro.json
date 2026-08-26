@@ -717,7 +717,7 @@
   "chat.publishing.dialog.submit": "Create draft",
   "chat.publishing.dialog.title": "Choose a publishing account",
   "chat.publishing.editor.content": "Conținutul articolului",
-  "chat.publishing.editor.description": "Modificările se aplică doar acestei ciorne și nu schimbă conversația.",
+  "chat.publishing.editor.description": "Modificările se sincronizează cu acest articol și sunt folosite la publicare, fără a afecta alte articole.",
   "chat.publishing.editor.placeholder": "Scrie conținutul articolului...",
   "chat.publishing.editor.title": "Editează articolul",
   "chat.publishing.failed": "Failed to create the WeChat draft",

@@ -717,7 +717,7 @@
   "chat.publishing.dialog.submit": "Create draft",
   "chat.publishing.dialog.title": "Choose a publishing account",
   "chat.publishing.editor.content": "Содержание статьи",
-  "chat.publishing.editor.description": "Изменения применяются только к этому черновику и не меняют переписку.",
+  "chat.publishing.editor.description": "Изменения синхронизируются с этой статьёй и используются при публикации, не затрагивая другие статьи.",
   "chat.publishing.editor.placeholder": "Введите содержание статьи...",
   "chat.publishing.editor.title": "Редактировать статью",
   "chat.publishing.failed": "Failed to create the WeChat draft",

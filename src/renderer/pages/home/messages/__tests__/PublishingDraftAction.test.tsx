@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   blobToDataUrl: vi.fn(),
   getImageBlobFromSource: vi.fn(),
   request: vi.fn(),
+  saveDraft: vi.fn(),
   toSafeFileUrl: vi.fn()
 }))
 
@@ -98,6 +99,7 @@ describe('PublishingDraftAction', () => {
     mocks.getImageBlobFromSource.mockReset().mockResolvedValue(new Blob(['image'], { type: 'image/png' }))
     mocks.blobToDataUrl.mockReset().mockResolvedValue('data:image/png;base64,cHJldmlldw==')
     mocks.toSafeFileUrl.mockReset().mockImplementation((path: string) => `file://${path}`)
+    mocks.saveDraft.mockReset().mockResolvedValue(undefined)
     mocks.request.mockReset().mockImplementation(async (route: string) => {
       if (route === 'file.batch_get_physical_paths') return { 'image-1': '/tmp/image.png' }
       if (route === 'publishing.prepare_draft') return { id: 'task-1', status: 'prepared' }
@@ -112,6 +114,7 @@ describe('PublishingDraftAction', () => {
         markdown={'# Original title\n\nOriginal body is long enough to publish as an article.'}
         topicName="Fallback topic"
         imageFileIds={['image-1']}
+        onSaveDraft={mocks.saveDraft}
       />
     )
 
@@ -125,6 +128,10 @@ describe('PublishingDraftAction', () => {
     await user.clear(contentInput)
     await user.type(contentInput, 'Edited body is ready for this article only.')
     await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(mocks.saveDraft).toHaveBeenCalledWith({
+      title: 'Edited title',
+      markdown: 'Edited body is ready for this article only.'
+    })
 
     await user.click(screen.getByRole('button', { name: 'Confirm publishing' }))
     expect(screen.getByLabelText('Article title')).toHaveValue('Edited title')
@@ -148,6 +155,7 @@ describe('PublishingDraftAction', () => {
         markdown={'# Illustrated article\n\nBefore image.\n\n![Preview](attachment://image-1)\n\nAfter image.'}
         topicName="Fallback topic"
         imageFileIds={['image-1']}
+        onSaveDraft={mocks.saveDraft}
       />
     )
 
@@ -180,12 +188,14 @@ describe('PublishingDraftAction', () => {
           <PublishingDraftAction
             markdown={'# First title\n\nThe first article has enough original body content.'}
             topicName="First topic"
+            onSaveDraft={mocks.saveDraft}
           />
         </section>
         <section data-testid="second-article">
           <PublishingDraftAction
             markdown={'# Second title\n\nThe second article has enough original body content.'}
             topicName="Second topic"
+            onSaveDraft={mocks.saveDraft}
           />
         </section>
       </>

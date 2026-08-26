@@ -717,7 +717,7 @@
   "chat.publishing.dialog.submit": "建立草稿",
   "chat.publishing.dialog.title": "選擇發布帳號",
   "chat.publishing.editor.content": "文章正文",
-  "chat.publishing.editor.description": "修改僅套用於這篇文章的發布稿，不會改動對話中的原始內容。",
+  "chat.publishing.editor.description": "修改會同步到目前文章，並用於後續發布，不影響其他文章。",
   "chat.publishing.editor.placeholder": "輸入文章正文...",
   "chat.publishing.editor.title": "編輯文章",
   "chat.publishing.failed": "微信公眾號草稿建立失敗",

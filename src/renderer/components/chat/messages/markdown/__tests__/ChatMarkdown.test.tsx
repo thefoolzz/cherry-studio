@@ -11,13 +11,18 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@cherrystudio/ui', () => ({
   defaultMarkdownPlugins: {},
-  Markdown: (props: { children: string; remarkPlugins?: unknown[] }) => {
+  Markdown: (props: { children: string; id: string; remarkPlugins?: unknown[] }) => {
     mocks.markdown(props)
-    return <div data-testid="static-markdown">{props.children}</div>
+    return (
+      <div data-testid="static-markdown" data-render-id={props.id}>
+        {props.children}
+      </div>
+    )
   },
   StreamingMarkdown: (props: {
     animated?: false
     children: string
+    id: string
     parseIncompleteMarkdown?: boolean
     remarkPlugins?: unknown[]
   }) => {
@@ -26,6 +31,7 @@ vi.mock('@cherrystudio/ui', () => ({
       <div
         data-testid="streaming-markdown"
         data-animated={String(props.animated)}
+        data-render-id={props.id}
         data-parse-incomplete={String(props.parseIncompleteMarkdown)}>
         {props.children}
       </div>
@@ -63,6 +69,40 @@ describe('ChatMarkdown', () => {
     expect(streamingNode).toHaveAttribute('data-animated', 'false')
     expect(streamingNode).toHaveAttribute('data-parse-incomplete', 'false')
     expect(mocks.markdown).not.toHaveBeenCalled()
+  })
+
+  it('remounts a streamed renderer when terminal content is rewritten', () => {
+    const { rerender } = render(
+      <ChatMarkdown block={{ id: 'message-part', content: '# Original title\n\nOriginal body', status: 'streaming' }} />
+    )
+
+    rerender(
+      <ChatMarkdown block={{ id: 'message-part', content: '# Original title\n\nOriginal body', status: 'success' }} />
+    )
+    const terminalNode = screen.getByTestId('streaming-markdown')
+
+    rerender(
+      <ChatMarkdown block={{ id: 'message-part', content: '# Edited title\n\nEdited body', status: 'success' }} />
+    )
+
+    expect(screen.getByTestId('streaming-markdown')).not.toBe(terminalNode)
+    expect(screen.getByTestId('streaming-markdown')).toHaveAttribute('data-render-id', 'message-part-revision-1')
+    expect(screen.getByTestId('streaming-markdown')).toHaveTextContent('# Edited title Edited body')
+  })
+
+  it('remounts a static renderer when terminal content is rewritten', () => {
+    const { rerender } = render(
+      <ChatMarkdown block={{ id: 'message-part', content: '# Original title\n\nOriginal body', status: 'success' }} />
+    )
+    const originalNode = screen.getByTestId('static-markdown')
+
+    rerender(
+      <ChatMarkdown block={{ id: 'message-part', content: '# Edited title\n\nEdited body', status: 'success' }} />
+    )
+
+    expect(screen.getByTestId('static-markdown')).not.toBe(originalNode)
+    expect(screen.getByTestId('static-markdown')).toHaveAttribute('data-render-id', 'message-part-revision-1')
+    expect(screen.getByTestId('static-markdown')).toHaveTextContent('# Edited title Edited body')
   })
 
   it('enables raw HTML artifacts only for inline HTML preview messages', () => {

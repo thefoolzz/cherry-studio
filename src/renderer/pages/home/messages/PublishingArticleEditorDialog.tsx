@@ -43,13 +43,14 @@ export interface PublishingArticleDraft {
 interface PublishingArticleEditorDialogProps {
   draft: PublishingArticleDraft
   onCancel: () => void
-  onSave: (draft: PublishingArticleDraft) => void
+  onSave: (draft: PublishingArticleDraft) => Promise<void>
 }
 
 export function PublishingArticleEditorDialog({ draft, onCancel, onSave }: PublishingArticleEditorDialogProps) {
   const { t } = useTranslation()
   const [title, setTitle] = useState(draft.title)
   const [markdown, setMarkdown] = useState(draft.markdown)
+  const [saving, setSaving] = useState(false)
   const attachmentIds = useMemo(
     () => [...new Set([...draft.markdown.matchAll(ATTACHMENT_SOURCE_PATTERN)].map((match) => match[1]))],
     [draft.markdown]
@@ -58,7 +59,7 @@ export function PublishingArticleEditorDialog({ draft, onCancel, onSave }: Publi
     attachmentIds.length === 0 ? draft.markdown : null
   )
   const [sourceByPreviewUrl, setSourceByPreviewUrl] = useState<ReadonlyMap<string, string>>(new Map())
-  const canSave = editorInitialMarkdown !== null && title.trim().length > 0 && markdown.trim().length > 0
+  const canSave = !saving && editorInitialMarkdown !== null && title.trim().length > 0 && markdown.trim().length > 0
 
   useEffect(() => {
     if (attachmentIds.length === 0) return
@@ -104,13 +105,18 @@ export function PublishingArticleEditorDialog({ draft, onCancel, onSave }: Publi
     [sourceByPreviewUrl]
   )
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!canSave) return
-    onSave({ title: title.trim(), markdown: markdown.trim() })
+    setSaving(true)
+    try {
+      await onSave({ title: title.trim(), markdown: markdown.trim() })
+    } finally {
+      setSaving(false)
+    }
   }, [canSave, markdown, onSave, title])
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onCancel()}>
+    <Dialog open onOpenChange={(open) => !open && !saving && onCancel()}>
       <DialogContent
         closeOnOverlayClick={false}
         className="h-[min(780px,calc(100vh-2rem))] max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-[960px]">
@@ -127,6 +133,7 @@ export function PublishingArticleEditorDialog({ draft, onCancel, onSave }: Publi
             <Input
               id="publishing-article-editor-title"
               autoFocus
+              disabled={saving}
               value={title}
               onChange={(event) => setTitle(event.target.value)}
             />
@@ -149,6 +156,7 @@ export function PublishingArticleEditorDialog({ draft, onCancel, onSave }: Publi
                 ariaLabel={t('chat.publishing.editor.content')}
                 className="min-h-0 flex-1 overflow-hidden"
                 autoFocus={false}
+                editable={!saving}
                 enableImageInsertion={false}
                 disabledCommands={DISABLED_ARTICLE_EDITOR_COMMANDS}
                 showToolbar
@@ -159,10 +167,10 @@ export function PublishingArticleEditorDialog({ draft, onCancel, onSave }: Publi
         </div>
 
         <DialogFooter className="border-border-subtle border-t px-6 py-4">
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" onClick={onCancel} disabled={saving}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={handleSave} disabled={!canSave}>
+          <Button onClick={() => void handleSave()} disabled={!canSave} loading={saving}>
             <Save size={14} />
             {t('common.save')}
           </Button>

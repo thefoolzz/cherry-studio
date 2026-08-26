@@ -717,7 +717,7 @@
   "chat.publishing.dialog.submit": "Create draft",
   "chat.publishing.dialog.title": "Choose a publishing account",
   "chat.publishing.editor.content": "記事本文",
-  "chat.publishing.editor.description": "変更はこの記事の下書きにのみ適用され、会話内容は変更されません。",
+  "chat.publishing.editor.description": "変更はこの記事に同期され、他の記事には影響せず、そのまま公開に使用されます。",
   "chat.publishing.editor.placeholder": "記事本文を入力...",
   "chat.publishing.editor.title": "記事を編集",
   "chat.publishing.failed": "Failed to create the WeChat draft",

@@ -43,7 +43,10 @@ import { type Topic, TopicType } from '@renderer/types/topic'
 import { buildFilePartsForAttachments, withComposerFilePartMeta } from '@renderer/utils/file/buildFileParts'
 import { getComposerShortcutLabel, resolveSendShortcut } from '@renderer/utils/input'
 import type { ComposerAttachment } from '@renderer/utils/message/composerAttachment'
-import { canEditAssistantMessageParts } from '@renderer/utils/message/partsHelpers'
+import {
+  canEditAssistantMessageParts,
+  replaceAssistantEditableMessageParts
+} from '@renderer/utils/message/partsHelpers'
 import {
   isGPT5SeriesReasoningModel,
   isOpenAIWebSearchModel,
@@ -186,22 +189,6 @@ interface InputHistoryToolSnapshot extends Pick<SavedComposerDraft, 'files' | 's
 }
 
 type ComposerFilePart = Extract<CherryMessagePart, { type: 'file' }>
-
-const isComposerEditableMessagePart = (part: CherryMessagePart) => part.type === 'text' || part.type === 'file'
-
-const replaceComposerEditableMessageParts = (
-  originalParts: CherryMessagePart[],
-  editedParts: CherryMessagePart[]
-): CherryMessagePart[] => {
-  const firstEditablePartIndex = originalParts.findIndex(isComposerEditableMessagePart)
-  if (firstEditablePartIndex === -1) return editedParts
-
-  return originalParts.flatMap((part, index) => {
-    if (part.type === 'data-translation') return []
-    if (!isComposerEditableMessagePart(part)) return [part]
-    return index === firstEditablePartIndex ? editedParts : []
-  })
-}
 
 type ChatComposerControlProps = Omit<ChatConversationControlsProps, 'side'> & {
   topBarPortalAvailable: boolean
@@ -1580,7 +1567,7 @@ const ChatComposerInner = ({
         if (!editedParts) return
 
         const savedParts = isAssistantReply
-          ? replaceComposerEditableMessageParts(editingMessageForCurrentTopic.parts, editedParts)
+          ? replaceAssistantEditableMessageParts(editingMessageForCurrentTopic.parts, editedParts)
           : editedParts
         if (isAssistantReply || !resend) {
           await chatWrite.editMessage(editingMessageForCurrentTopic.message.id, savedParts)
