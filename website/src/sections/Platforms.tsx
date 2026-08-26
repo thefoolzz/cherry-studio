@@ -1,12 +1,7 @@
 import { Section } from '../components/Section'
 import { Frame } from '../demo/Frame'
 
-const ROWS = [
-  { platform: '微信公众号', status: '就绪', draft: '自动创建草稿', ready: true },
-  { platform: '抖音', status: '已绑定', draft: '自动建草稿开发中', ready: false },
-  { platform: '小红书', status: '已绑定', draft: '自动建草稿开发中', ready: false },
-  { platform: '知乎', status: '已绑定', draft: '自动建草稿开发中', ready: false }
-]
+const ROWS = ['微信公众号', '抖音', '小红书', '知乎']
 
 export function Platforms() {
   return (
@@ -18,20 +13,16 @@ export function Platforms() {
       <div className="mx-auto max-w-[640px]">
         <Frame badge="4 个平台" title="平台账号">
           <ul>
-            {ROWS.map((row) => (
+            {ROWS.map((platform) => (
               <li
                 className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-ink/12 px-5 py-4 last:border-b-0"
-                key={row.platform}>
+                key={platform}>
                 <span className="flex items-center gap-3">
-                  <span
-                    aria-hidden="true"
-                    className={`inline-block size-2 rounded-full ${row.ready ? 'bg-vermilion' : 'bg-lead/50'}`}
-                  />
-                  <span className="font-display text-lg font-black">{row.platform}</span>
-                  <span className="text-[0.7rem] text-lead">{row.status}</span>
+                  <span aria-hidden="true" className="inline-block size-2 rounded-full bg-vermilion" />
+                  <span className="font-display text-lg font-black">{platform}</span>
                 </span>
-                <span className={`text-[0.85rem] ${row.ready ? '' : 'text-lead'}`}>
-                  {row.ready ? <span className="marker">{row.draft}</span> : row.draft}
+                <span className="text-[0.85rem]">
+                  <span className="marker">自动创建草稿</span>
                 </span>
               </li>
             ))}

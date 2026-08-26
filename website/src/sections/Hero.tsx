@@ -34,7 +34,7 @@ export function Hero({ state, os }: { state: ReleaseState; os: OsKey | null }) {
 
   return (
     <section className="mx-auto w-full max-w-[1120px] px-6 pt-12 pb-20 text-center md:pt-20" id="top">
-      <p className="mono-label text-vermilion">AI 营销工具 · 公众号自动发布</p>
+      <p className="mono-label text-vermilion">AI 营销工具 · 多媒体平台自动发布</p>
       <h1 className="mx-auto mt-6 max-w-[14ch] text-[clamp(2.6rem,8.5vw,5.6rem)]">
         <span className="anim-rise block">不用写，</span>
         <span className="anim-rise block [animation-delay:130ms]">
@@ -42,7 +42,7 @@ export function Hero({ state, os }: { state: ReleaseState; os: OsKey | null }) {
         </span>
       </h1>
       <p className="anim-rise mx-auto mt-8 max-w-[34ch] text-lg leading-[1.95] [animation-delay:280ms]">
-        说清目标，AI 出稿配图，自动把草稿建进公众号后台。
+        说清目标，AI 出稿配图，自动把草稿建进各平台后台。
       </p>
       <p className="anim-rise mx-auto mt-3 max-w-[34ch] text-lead [animation-delay:340ms]">
         写稿、找图、搬运、排版一次做完，你只管审一遍。
