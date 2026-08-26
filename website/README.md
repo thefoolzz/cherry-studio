@@ -12,6 +12,9 @@ pnpm build                        # tsc --noEmit + vite build → dist/
 
 主仓的门禁已经排除本目录：`.oxlintrc.json`、`eslint.config.mjs`、`biome.jsonc` 各加了 `website` 忽略项，`electron-builder.yml` 的 `files` 加了 `!website`（否则站点会被打进 asar）。站点文案是直接写死的中文，不接 i18next——仓库的 i18n 检查只扫 `src/`，不会碰这里。
 
-下载按钮在运行时读 `api.github.com/repos/thefoolzz/cherry-studio/releases/latest`，按资源名逐个判断属于哪个平台和架构——**以真实 release 的产物名为准，不要照 `electron-builder.yml` 拼文件名**：Windows 安装版实际叫 `CherryStudio-Setup-<version>[-arm64].exe`，macOS x64 的 zip 是 `CherryStudio-<version>-mac.zip`（没有架构词），Linux 的 deb 用 `amd64`、rpm 用 `x86_64`/`aarch64`。`.blockmap`、`latest*.yml`、`release-history.json` 会被过滤掉。
+下载链接是「构建期兜底 + 运行时升级」两层：
 
-未认证的 GitHub API 是 60 次/小时/IP，限流或离线时整个下载区降级成跳转发布页——改动这块务必把正常、限流、离线三种情况都试一遍。
+- `src/download/release.generated.json` 是构建期同步下来的安装包列表，页面一打开就用它，所以零网络也有真实按钮，**永远不会出现空态**。发新版后跑 `pnpm release:sync` 更新它（被限流时加 `GITHUB_TOKEN=<token>`），这个文件要提交。
+- 页面同时问一次 `api.github.com/.../releases/latest`，成功就替换成最新版。未认证的 API 是 60 次/小时/IP，国内也常连不上，所以这一步只做增量升级，失败就静默保持兜底那份。
+
+资源名**以真实 release 为准，不要照 `electron-builder.yml` 拼文件名**：Windows 安装版实际叫 `CherryStudio-Setup-<version>[-arm64].exe`，macOS x64 的 zip 是 `CherryStudio-<version>-mac.zip`（没有架构词），Linux 的 deb 用 `amd64`、rpm 用 `x86_64`/`aarch64`。`.blockmap`、`latest*.yml`、`release-history.json` 会被过滤掉。

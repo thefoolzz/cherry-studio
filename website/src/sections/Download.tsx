@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import { INK_BUTTON, INK_BUTTON_OUTLINE } from '../components/buttons'
 import { Section } from '../components/Section'
 import { buildGroups, formatDate, formatSize, LATEST_RELEASE_URL, type OsGroup, type OsKey } from '../download/assets'
@@ -38,34 +40,37 @@ function Card({ group, highlight }: { group: OsGroup; highlight: boolean }) {
 }
 
 export function Download({ state, os }: { state: ReleaseState; os: OsKey | null }) {
-  const groups = state.status === 'ready' ? buildGroups(state.release) : []
-  const published = state.status === 'ready' ? formatDate(state.release.publishedAt) : null
-  const eyebrow =
-    state.status === 'ready'
-      ? ['下载', state.release.version && `v${state.release.version}`, published].filter(Boolean).join(' · ')
-      : '下载'
+  const [showAll, setShowAll] = useState(false)
+  const groups = buildGroups(state.release)
+  const mine = os ? groups.filter((group) => group.os === os) : []
+  const visible = !os || showAll || mine.length === 0 ? groups : mine
+  const published = formatDate(state.release.publishedAt)
+  const eyebrow = ['下载', state.release.version && `v${state.release.version}`, published].filter(Boolean).join(' · ')
 
   return (
     <Section eyebrow={eyebrow} id="download" lead="装好打开就能用，公众号扫码登录一次即可。" title="拿去用">
-      {groups.length > 0 ? (
-        <div className="grid gap-6 md:grid-cols-3">
-          {groups.map((group) => (
-            <Card group={group} highlight={group.os === os} key={group.os} />
+      {visible.length > 0 ? (
+        <div className={visible.length > 1 ? 'grid gap-6 md:grid-cols-3' : 'mx-auto max-w-[420px]'}>
+          {visible.map((group) => (
+            <Card group={group} highlight={visible.length > 1 && group.os === os} key={group.os} />
           ))}
         </div>
       ) : (
-        <div className="mx-auto max-w-[520px] border-[2px] border-ink/40 p-7">
-          <p className="leading-relaxed">
-            {state.status === 'loading' ? '正在取安装包列表。' : '暂时没取到安装包列表，去发布页直接选一个。'}
-          </p>
-          <a className={`${INK_BUTTON_OUTLINE} mt-6`} href={LATEST_RELEASE_URL}>
-            全部安装包
-          </a>
-        </div>
+        <a className={INK_BUTTON_OUTLINE} href={LATEST_RELEASE_URL}>
+          全部安装包
+        </a>
       )}
-      <p className="mx-auto mt-8 max-w-[40ch] text-sm text-lead">
-        macOS 分 Apple 芯片与 Intel 两个包，别装错架构。
-      </p>
+      {os && !showAll && mine.length > 0 && groups.length > mine.length ? (
+        <button
+          className="mx-auto mt-6 block font-mono text-[0.7rem] tracking-[0.14em] text-lead underline decoration-dotted underline-offset-4 hover:text-ink"
+          onClick={() => setShowAll(true)}
+          type="button">
+          其他系统
+        </button>
+      ) : null}
+      {visible.some((group) => group.os === 'mac') ? (
+        <p className="mx-auto mt-8 max-w-[40ch] text-sm text-lead">macOS 分 Apple 芯片与 Intel 两个包，别装错架构。</p>
+      ) : null}
     </Section>
   )
 }
