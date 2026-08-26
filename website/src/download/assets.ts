@@ -37,44 +37,46 @@ interface Matcher {
 const NOT_INSTALLERS = /\.(blockmap|yml|yaml|json|txt|sha\d+)$/i
 
 /**
- * 产物名以真实 release 为准，各平台打包器的架构词并不统一：
- * Windows 安装版是 `CherryStudio-Setup-<version>[-arm64].exe`，macOS x64 的 zip 没有架构词，
- * Linux 的 deb 用 amd64、rpm 用 x86_64/aarch64。所以按名字判断而不是拼文件名。
+ * 只认扩展名、`setup`/`portable` 和架构词，不认品牌前缀：改 `electron-builder.yml` 的
+ * artifactName 之后旧 release（`*-Setup-<version>.exe`、`*-mac.zip`）的按钮也还在。
+ * 架构词各打包器不统一，deb 用 amd64、rpm/AppImage 用 x86_64/aarch64，所以只判断是不是 ARM。
  */
+const isArm64 = (name: string) => /arm64|aarch64/.test(name)
+
 const MATCHERS: Record<OsKey, { name: string; primary: Matcher[]; extra: Matcher[] }> = {
   mac: {
     name: 'macOS',
     primary: [
-      { label: 'Apple 芯片 · dmg', match: (name) => name.endsWith('-arm64.dmg') },
-      { label: 'Intel · dmg', match: (name) => name.endsWith('-x64.dmg') }
+      { label: 'Apple 芯片 · dmg', match: (name) => name.endsWith('.dmg') && isArm64(name) },
+      { label: 'Intel · dmg', match: (name) => name.endsWith('.dmg') && !isArm64(name) }
     ],
     extra: [
-      { label: 'Apple 芯片 · zip', match: (name) => name.endsWith('-arm64-mac.zip') },
-      { label: 'Intel · zip', match: (name) => name.endsWith('-mac.zip') && !name.includes('arm64') }
+      { label: 'Apple 芯片 · zip', match: (name) => name.endsWith('.zip') && isArm64(name) },
+      { label: 'Intel · zip', match: (name) => name.endsWith('.zip') && !isArm64(name) }
     ]
   },
   win: {
     name: 'Windows',
     primary: [
-      { label: 'x64 · 安装版', match: (name) => name.includes('-setup-') && name.endsWith('.exe') && !name.includes('arm64') },
-      { label: 'ARM64 · 安装版', match: (name) => name.includes('-setup-') && name.endsWith('arm64.exe') }
+      { label: 'x64 · 安装版', match: (name) => name.endsWith('.exe') && name.includes('setup') && !isArm64(name) },
+      { label: 'ARM64 · 安装版', match: (name) => name.endsWith('.exe') && name.includes('setup') && isArm64(name) }
     ],
     extra: [
-      { label: 'x64 · 免安装', match: (name) => name.endsWith('-x64-portable.exe') },
-      { label: 'ARM64 · 免安装', match: (name) => name.endsWith('-arm64-portable.exe') }
+      { label: 'x64 · 免安装', match: (name) => name.endsWith('.exe') && name.includes('portable') && !isArm64(name) },
+      { label: 'ARM64 · 免安装', match: (name) => name.endsWith('.exe') && name.includes('portable') && isArm64(name) }
     ]
   },
   linux: {
     name: 'Linux',
     primary: [
-      { label: 'x86_64 · AppImage', match: (name) => name.endsWith('x86_64.appimage') },
-      { label: 'ARM64 · AppImage', match: (name) => name.endsWith('arm64.appimage') }
+      { label: 'x86_64 · AppImage', match: (name) => name.endsWith('.appimage') && !isArm64(name) },
+      { label: 'ARM64 · AppImage', match: (name) => name.endsWith('.appimage') && isArm64(name) }
     ],
     extra: [
-      { label: 'x86_64 · deb', match: (name) => name.endsWith('amd64.deb') },
-      { label: 'ARM64 · deb', match: (name) => name.endsWith('arm64.deb') },
-      { label: 'x86_64 · rpm', match: (name) => name.endsWith('x86_64.rpm') },
-      { label: 'ARM64 · rpm', match: (name) => name.endsWith('aarch64.rpm') }
+      { label: 'x86_64 · deb', match: (name) => name.endsWith('.deb') && !isArm64(name) },
+      { label: 'ARM64 · deb', match: (name) => name.endsWith('.deb') && isArm64(name) },
+      { label: 'x86_64 · rpm', match: (name) => name.endsWith('.rpm') && !isArm64(name) },
+      { label: 'ARM64 · rpm', match: (name) => name.endsWith('.rpm') && isArm64(name) }
     ]
   }
 }
