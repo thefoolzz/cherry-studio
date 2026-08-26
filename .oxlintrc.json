@@ -12,6 +12,7 @@
     "out/**",
     "local/**",
     "tests/**",
+    "website/**",
     ".yarn/**",
     ".gitignore",
     "scripts/cloudflare-worker.js",

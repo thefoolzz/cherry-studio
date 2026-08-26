@@ -1,0 +1,76 @@
+{
+  "version": "2.0.9",
+  "publishedAt": "2026-08-25T08:44:36Z",
+  "assets": [
+    {
+      "name": "CherryStudio-2.0.9-arm64.dmg",
+      "url": "https://github.com/thefoolzz/cherry-studio/releases/download/v2.0.9/CherryStudio-2.0.9-arm64.dmg",
+      "size": 356515840
+    },
+    {
+      "name": "CherryStudio-2.0.9-x64.dmg",
+      "url": "https://github.com/thefoolzz/cherry-studio/releases/download/v2.0.9/CherryStudio-2.0.9-x64.dmg",
+      "size": 381681664
+    },
+    {
+      "name": "CherryStudio-2.0.9-arm64-mac.zip",
+      "url": "https://github.com/thefoolzz/cherry-studio/releases/download/v2.0.9/CherryStudio-2.0.9-arm64-mac.zip",
+      "size": 349175808
+    },
+    {
+      "name": "CherryStudio-2.0.9-mac.zip",
+      "url": "https://github.com/thefoolzz/cherry-studio/releases/download/v2.0.9/CherryStudio-2.0.9-mac.zip",
+      "size": 373293056
+    },
+    {
+      "name": "CherryStudio-Setup-2.0.9.exe",
+      "url": "https://github.com/thefoolzz/cherry-studio/releases/download/v2.0.9/CherryStudio-Setup-2.0.9.exe",
+      "size": 296747008
+    },
+    {
+      "name": "CherryStudio-Setup-2.0.9-arm64.exe",
+      "url": "https://github.com/thefoolzz/cherry-studio/releases/download/v2.0.9/CherryStudio-Setup-2.0.9-arm64.exe",
+      "size": 278921216
+    },
+    {
+      "name": "CherryStudio-2.0.9-x64-portable.exe",
+      "url": "https://github.com/thefoolzz/cherry-studio/releases/download/v2.0.9/CherryStudio-2.0.9-x64-portable.exe",
+      "size": 296747008
+    },
+    {
+      "name": "CherryStudio-2.0.9-arm64-portable.exe",
+      "url": "https://github.com/thefoolzz/cherry-studio/releases/download/v2.0.9/CherryStudio-2.0.9-arm64-portable.exe",
+      "size": 277872640
+    },
+    {
+      "name": "CherryStudio-2.0.9-x86_64.AppImage",
+      "url": "https://github.com/thefoolzz/cherry-studio/releases/download/v2.0.9/CherryStudio-2.0.9-x86_64.AppImage",
+      "size": 398458880
+    },
+    {
+      "name": "CherryStudio-2.0.9-arm64.AppImage",
+      "url": "https://github.com/thefoolzz/cherry-studio/releases/download/v2.0.9/CherryStudio-2.0.9-arm64.AppImage",
+      "size": 397410304
+    },
+    {
+      "name": "CherryStudio-2.0.9-amd64.deb",
+      "url": "https://github.com/thefoolzz/cherry-studio/releases/download/v2.0.9/CherryStudio-2.0.9-amd64.deb",
+      "size": 301989888
+    },
+    {
+      "name": "CherryStudio-2.0.9-arm64.deb",
+      "url": "https://github.com/thefoolzz/cherry-studio/releases/download/v2.0.9/CherryStudio-2.0.9-arm64.deb",
+      "size": 286261248
+    },
+    {
+      "name": "CherryStudio-2.0.9-x86_64.rpm",
+      "url": "https://github.com/thefoolzz/cherry-studio/releases/download/v2.0.9/CherryStudio-2.0.9-x86_64.rpm",
+      "size": 260046848
+    },
+    {
+      "name": "CherryStudio-2.0.9-aarch64.rpm",
+      "url": "https://github.com/thefoolzz/cherry-studio/releases/download/v2.0.9/CherryStudio-2.0.9-aarch64.rpm",
+      "size": 246415360
+    }
+  ]
+}

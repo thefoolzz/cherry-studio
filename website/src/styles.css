@@ -1,0 +1,165 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-paper: #f2ede2;
+  --color-surface: #fbfaf6;
+  --color-ink: #16150f;
+  --color-vermilion: #c92d17;
+  --color-marker: #e4fa5c;
+  --color-lead: #6b6656;
+
+  --font-display: 'Songti SC', 'Source Han Serif SC', 'Noto Serif CJK SC', 'Noto Serif SC', SimSun, serif;
+  --font-body: 'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    /* 印刷网点，极轻 */
+    background-image: radial-gradient(rgb(22 21 15 / 5%) 1px, transparent 1px);
+    background-size: 3px 3px;
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    line-height: 1.75;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1.14;
+  }
+
+  ::selection {
+    background: var(--color-marker);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 3px;
+  }
+}
+
+/* 竖排栏标：中文印刷的边栏习惯。中文不用等宽字，也不用拉丁字距 */
+@utility rail {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  letter-spacing: 0.24em;
+  color: var(--color-lead);
+  white-space: nowrap;
+}
+
+/* 荧光笔：全站唯一的亮色，只用来划重点 */
+@utility marker {
+  background-color: var(--color-marker);
+  mix-blend-mode: multiply;
+  padding-inline: 0.14em;
+  box-decoration-break: clone;
+}
+
+/* 朱红印章 */
+@utility stamp {
+  font-family: var(--font-display);
+  color: var(--color-vermilion);
+  border: 2.5px solid currentcolor;
+  letter-spacing: 0.16em;
+  mix-blend-mode: multiply;
+}
+
+@utility mono-label {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: var(--color-lead);
+}
+
+/* 大标题上的荧光笔：只在基线附近划一道，不在字后面铺色块 */
+@utility marker-bar {
+  background-image: linear-gradient(var(--color-marker), var(--color-marker));
+  background-repeat: no-repeat;
+  background-position: 0 0.82em;
+  background-size: 100% 0.18em;
+  mix-blend-mode: multiply;
+  box-decoration-break: clone;
+  animation: bar-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.55s both;
+}
+
+@keyframes bar-in {
+  from {
+    background-size: 0% 0.18em;
+  }
+}
+
+@keyframes rule-in {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.35em);
+  }
+}
+
+@keyframes sweep {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+
+@utility anim-rule {
+  animation: rule-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transform-origin: left;
+}
+
+@utility anim-rise {
+  animation: rise 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@utility anim-sweep {
+  animation: sweep 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* 校样上的删改线：用背景条实现，inline 元素换行时每段各自划一道 */
+@utility strike {
+  color: var(--color-lead);
+  background-image: linear-gradient(var(--color-vermilion), var(--color-vermilion));
+  background-repeat: no-repeat;
+  background-position: 0 0.62em;
+  background-size: 0% 2px;
+  box-decoration-break: clone;
+  transition: background-size 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@utility struck {
+  background-size: 100% 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+

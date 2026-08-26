@@ -36,6 +36,7 @@ files:
   - "!scripts"
   - "!local"
   - "!docs"
+  - "!website"
   - "!packages"
   - "!.swc"
   - "!.bin"
