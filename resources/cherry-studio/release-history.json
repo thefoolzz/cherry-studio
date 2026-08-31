@@ -1,5 +1,9 @@
 [
   {
+    "version": "2.0.10",
+    "releaseNotes": "<!--LANG:en-->\nCherry Studio 2.0.10 - Publishing and Download Improvements\n\n✨ New Features\n- [Publishing] Edit each generated article before sending it to a publishing channel.\n- [Website] Explore 晨微's multi-platform publishing workflow on the new product website.\n\n🐛 Bug Fixes\n- [Publishing] Keep article edits synchronized with the generated draft and publishing action.\n\n💄 Improvements\n- [Website] Download choices now appear from a built-in release list even when GitHub is unavailable, with the visitor's platform shown first.\n- [Website] Refresh product messaging for WeChat, Douyin, Xiaohongshu, and Zhihu publishing.\n\n<!--LANG:zh-CN-->\nCherry Studio 2.0.10 - 发布与下载体验升级\n\n✨ 新功能\n- [发布] 支持在发送到发布平台前逐篇编辑生成的文章。\n- [官网] 新增产品官网，展示晨微的多平台内容发布流程。\n\n🐛 问题修复\n- [发布] 修复文章编辑内容与生成草稿及发布操作不同步的问题。\n\n💄 改进\n- [官网] GitHub 暂时不可用时仍从内置版本列表展示下载选项，并优先显示访客当前平台。\n- [官网] 更新产品介绍，完整呈现微信公众号、抖音、小红书和知乎发布能力。\n<!--LANG:END-->\n"
+  },
+  {
     "version": "2.0.9",
     "releaseNotes": "<!--LANG:en-->\n晨微 2.0.9 - Cloud Release and Creator Platform Support\n\n✨ New Features\n- Added creator platform accounts for Douyin, Xiaohongshu, and Zhihu.\n- Added GitHub Actions cloud packaging for Windows, macOS, and Linux.\n- Added automatic update delivery through GitHub Releases.\n\n<!--LANG:zh-CN-->\n晨微 2.0.9 - 云端发布与创作平台支持\n\n✨ 新功能\n- 新增抖音、小红书和知乎平台账号。\n- 新增 Windows、macOS 和 Linux 的 GitHub Actions 云打包。\n- 新增通过 GitHub Releases 分发客户端自动更新。\n<!--LANG:END-->\n"
   },

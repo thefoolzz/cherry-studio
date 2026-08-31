@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "package": {
     "name": "CherryStudio",
-    "version": "2.0.8",
+    "version": "2.0.10",
     "description": "A powerful AI assistant for producer.",
-    "homepage": "https://github.com/CherryHQ/cherry-studio"
+    "homepage": "https://github.com/thefoolzz/cherry-studio"
   },
   "routes": {
     "primary": [
@@ -47,6 +47,7 @@
     ],
     "all": [
       "/app",
+      "/platform-accounts",
       "/settings",
       "/app/agents",
       "/app/chat",
