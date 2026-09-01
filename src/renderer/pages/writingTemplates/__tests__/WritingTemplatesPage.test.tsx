@@ -137,7 +137,9 @@ describe('WritingTemplatesPage', () => {
 
     render(<WritingTemplatesPage />)
 
-    expect(screen.getByText(contentType)).toHaveClass('max-w-full', 'truncate')
-    expect(screen.getByText(contentType)).toHaveAttribute('title', contentType)
+    const label = screen.getByText(contentType)
+    expect(label).toHaveClass('min-w-0', 'truncate')
+    expect(label.parentElement).toHaveClass('max-w-full', 'justify-start')
+    expect(label.parentElement).toHaveAttribute('title', contentType)
   })
 })

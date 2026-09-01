@@ -402,10 +402,10 @@ export default function WritingTemplatesPage() {
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <h2 className="max-w-full truncate font-medium text-foreground">{template.name}</h2>
                         <Badge
-                          className="max-w-full truncate"
+                          className="max-w-full justify-start"
                           variant="secondary"
                           title={template.blueprint.contentType}>
-                          {template.blueprint.contentType}
+                          <span className="min-w-0 truncate">{template.blueprint.contentType}</span>
                         </Badge>
                       </div>
                       <p className="mt-2 line-clamp-2 text-muted-foreground text-sm">{template.description}</p>
