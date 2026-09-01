@@ -16,7 +16,7 @@ export class AppService {
     } else if (isLinux) {
       try {
         const autostartDir = application.getPath('sys.appdata.autostart')
-        const desktopFile = path.join(autostartDir, isDev ? 'cherry-studio-dev.desktop' : 'cherry-studio.desktop')
+        const desktopFile = path.join(autostartDir, isDev ? 'molic-dev.desktop' : 'molic.desktop')
 
         if (isLaunchOnBoot) {
           // Ensure autostart directory exists
@@ -36,10 +36,10 @@ export class AppService {
           // Create desktop file content
           const desktopContent = `[Desktop Entry]
   Type=Application
-  Name=晨微
+  Name=molic
   Comment=A powerful AI assistant for producer.
   Exec=${executablePath}
-  Icon=cherrystudio
+  Icon=molic
   Terminal=false
   StartupNotify=false
   Categories=Development;Utility;
