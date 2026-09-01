@@ -262,7 +262,7 @@ export class ProtocolService extends BaseService {
       }
 
       const desktopFileContent = `[Desktop Entry]
-Name=molic
+Name=chenwei
 Exec=${escapePathForExec(appPath)} %U
 Terminal=false
 Type=Application

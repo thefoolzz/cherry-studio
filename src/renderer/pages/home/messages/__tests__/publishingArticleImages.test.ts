@@ -11,13 +11,13 @@ describe('publishing article images', () => {
     expect(embedded).toBe(
       [
         '# 标题',
-        '![封面图](attachment://cover-id)',
+        '![Cover image](attachment://cover-id)',
         '第一段',
         '第二段',
-        '![正文配图 1](attachment://body-one)',
+        '![Article image 1](attachment://body-one)',
         '第三段',
         '第四段',
-        '![正文配图 2](attachment://body-two)',
+        '![Article image 2](attachment://body-two)',
         '第五段'
       ].join('\n\n')
     )

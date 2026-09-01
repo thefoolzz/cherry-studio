@@ -623,9 +623,7 @@ describe('MessagePartsRenderer', () => {
       ] as unknown as CherryMessagePart[])
 
       await waitFor(() =>
-        expect(screen.getByTestId('mock-markdown')).toHaveTextContent(
-          '![正文配图](data:image/png;base64,aW1hZ2U=)'
-        )
+        expect(screen.getByTestId('mock-markdown')).toHaveTextContent('![正文配图](data:image/png;base64,aW1hZ2U=)')
       )
       expect(mockGetPhysicalPath).toHaveBeenCalledWith({ id: 'generated-image-id' })
       expect(mockGetImageBlobFromSource).toHaveBeenCalledWith('file:///tmp/generated-image.png')

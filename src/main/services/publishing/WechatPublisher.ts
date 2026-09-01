@@ -1,3 +1,4 @@
+import { t } from '@main/i18n'
 import type { BrowserWindow } from 'electron'
 
 import type {
@@ -23,7 +24,8 @@ export class WechatPublisher implements PlatformPublisher {
   private readonly contentRenderer = new WechatContentRenderer()
 
   getWindowTitle(displayName: string): string {
-    return displayName === '微信公众号' ? displayName : `${displayName} · 微信公众号`
+    const platformName = t('publishing.platforms.wechat')
+    return displayName === platformName ? displayName : `${displayName} · ${platformName}`
   }
 
   renderMarkdown(source: string): string {
@@ -63,14 +65,21 @@ export class WechatPublisher implements PlatformPublisher {
 
   async createDraft(window: BrowserWindow, input: PlatformDraftInput): Promise<PlatformDraftResult> {
     if (window.isDestroyed() || window.webContents.isCrashed()) {
-      throw new Error('公众号窗口不可用')
+      throw new Error(t('publishing.errors.window_unavailable'))
     }
 
     const payload = JSON.stringify({
       taskId: input.taskId,
       title: input.title,
       html: this.renderMarkdown(input.markdown),
-      images: input.images ?? []
+      images: input.images ?? [],
+      messages: {
+        coverCropFailed: t('publishing.errors.cover_crop_failed'),
+        coverSizeFailed: t('publishing.errors.cover_size_failed'),
+        draftFailed: t('publishing.errors.draft_failed'),
+        imageUploadFailed: t('publishing.errors.image_upload_failed'),
+        tokenMissing: t('publishing.errors.token_missing')
+      }
     })
     const result = (await window.webContents.executeJavaScript(
       `(${buildCreateDraftScript.toString()})(${payload})`,
@@ -78,7 +87,7 @@ export class WechatPublisher implements PlatformPublisher {
     )) as WechatDraftScriptResult
 
     if (!result?.appMsgId) {
-      throw new Error(result?.error ?? '微信公众号草稿创建失败')
+      throw new Error(result?.error ?? t('publishing.errors.draft_failed'))
     }
 
     const editUrl = result.editUrl || window.webContents.getURL()
@@ -93,6 +102,13 @@ async function buildCreateDraftScript(input: {
   title: string
   html: string
   images: PlatformDraftImage[]
+  messages: {
+    coverCropFailed: string
+    coverSizeFailed: string
+    draftFailed: string
+    imageUploadFailed: string
+    tokenMissing: string
+  }
 }): Promise<WechatDraftScriptResult> {
   type WechatPageInfo = { token: string; nickname: string; ticket: string; userName: string }
   type UploadedImage = { id: string; fileId: number; url: string }
@@ -159,7 +175,7 @@ async function buildCreateDraftScript(input: {
     const response = await fetch(url, { method: 'POST', body: formData, credentials: 'include' })
     const result = await response.json()
     if (result?.base_resp?.err_msg !== 'ok' || !result.cdn_url) {
-      throw new Error(result?.base_resp?.err_msg || `图片上传失败 ret=${result?.base_resp?.ret}`)
+      throw new Error(result?.base_resp?.err_msg || `${input.messages.imageUploadFailed} ret=${result?.base_resp?.ret}`)
     }
     return { id: image.id, fileId: Number.parseInt(result.content, 10), url: result.cdn_url }
   }
@@ -168,7 +184,7 @@ async function buildCreateDraftScript(input: {
     new Promise((resolve, reject) => {
       const element = new Image()
       element.onload = () => resolve({ width: element.width, height: element.height })
-      element.onerror = () => reject(new Error('解析封面尺寸失败'))
+      element.onerror = () => reject(new Error(input.messages.coverSizeFailed))
       element.src = imageDataUrl(image)
     })
 
@@ -232,7 +248,7 @@ async function buildCreateDraftScript(input: {
     })
     const result = await response.json()
     if (result?.base_resp?.err_msg !== 'ok') {
-      throw new Error(result?.base_resp?.err_msg || '封面裁剪失败')
+      throw new Error(result?.base_resp?.err_msg || input.messages.coverCropFailed)
     }
     return result.result.map((item: { cdnurl: string; file_id: number }, index: number) => ({
       ...configs[index],
@@ -350,14 +366,14 @@ async function buildCreateDraftScript(input: {
     const response = await fetch(url, { method: 'POST', body: formData, credentials: 'include' })
     const result = await response.json()
     if (!result?.appMsgId) {
-      throw new Error(String(result?.base_resp?.err_msg || result?.base_resp?.ret || '创建草稿失败'))
+      throw new Error(String(result?.base_resp?.err_msg || result?.base_resp?.ret || input.messages.draftFailed))
     }
     return String(result.appMsgId)
   }
 
   try {
     const info = readInfo()
-    if (!info) return { error: '无法获取微信 token，请确认已登录公众号后台' }
+    if (!info) return { error: input.messages.tokenMissing }
 
     const uploaded = await Promise.all(input.images.map((image) => uploadImage(image, info)))
     const uploadedById = new Map(uploaded.map((image) => [image.id, image]))

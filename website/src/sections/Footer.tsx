@@ -15,7 +15,7 @@ export function Footer() {
       <div className="mt-16">
         <div className="h-px bg-ink/25" />
         <div className="mt-4">
-          <span className="mono-label">晨微 · AI 内容生产与自动发布</span>
+          <span className="mono-label">chenwei · AI 内容生产与自动发布</span>
         </div>
       </div>
     </footer>

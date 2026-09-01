@@ -96,7 +96,7 @@ const AboutSettings: FC = () => {
 
   const mailto = async () => {
     const email = 'support@cherry-ai.com'
-    const subject = '晨微 Feedback'
+    const subject = 'chenwei Feedback'
     const version = (await ipcApi.request('app.get_info')).version
     const platform = window.electron.process.platform
     const url = `mailto:${email}?subject=${subject}&body=%0A%0AVersion: ${version} | Platform: ${platform}`
@@ -213,7 +213,7 @@ const AboutSettings: FC = () => {
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <button
               type="button"
-              aria-label="晨微"
+              aria-label="chenwei"
               onClick={() => onOpenWebsite('https://github.com/thefoolzz/cherry-studio')}
               className="relative cursor-pointer">
               {appUpdateState.downloading && appUpdateState.downloadProgress > 0 && (
@@ -232,7 +232,7 @@ const AboutSettings: FC = () => {
             </button>
 
             <div className="flex min-h-18 flex-col items-start justify-center">
-              <div className="mb-1 font-bold text-foreground text-lg">晨微</div>
+              <div className="mb-1 font-bold text-foreground text-lg">chenwei</div>
               <div className="text-muted-foreground text-sm">{t('settings.about.description')}</div>
               <button
                 type="button"

@@ -1185,7 +1185,7 @@ describe('BackupManager direct v2 data compatibility', () => {
     vi.mocked(fs.readJson).mockResolvedValue({ version: 6, appName: 'Cherry Studio' } as never)
 
     await expect((backupManager as any).restoreDirect('/extract')).rejects.toThrow(
-      'Unsupported backup version 6. 晨微 v2 can only restore backup version 7.'
+      'Unsupported backup version 6. chenwei v2 can only restore backup version 7.'
     )
 
     expect(fs.copy).not.toHaveBeenCalled()

@@ -1,3 +1,4 @@
+import { t } from '@main/i18n'
 import type { PublishingPlatform } from '@shared/data/types/publishing'
 import type { BrowserWindow } from 'electron'
 
@@ -59,6 +60,6 @@ export class CreatorPlatformPublisher implements PlatformPublisher {
   }
 
   createDraft(): Promise<PlatformDraftResult> {
-    return Promise.reject(new Error(`${this.platformName}暂不支持自动创建草稿`))
+    return Promise.reject(new Error(t('publishing.errors.auto_draft_unsupported', { platform: this.platformName })))
   }
 }

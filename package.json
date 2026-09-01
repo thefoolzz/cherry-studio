@@ -3,7 +3,7 @@
   "version": "2.0.10",
   "private": true,
   "description": "A powerful AI assistant for producer.",
-  "desktopName": "molic.desktop",
+  "desktopName": "chenwei.desktop",
   "main": "./out/main/main.js",
   "author": "support@cherry-ai.com",
   "homepage": "https://github.com/thefoolzz/cherry-studio",

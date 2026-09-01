@@ -10,7 +10,7 @@ export function Masthead() {
     <header className="mx-auto w-full max-w-[1120px] px-6 pt-7">
       <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-3 border-b border-ink/25 pb-4">
         <a className="font-display text-3xl font-black tracking-[-0.05em]" href="#top">
-          晨微
+          chenwei
         </a>
         <nav aria-label="主导航" className="flex flex-wrap items-center gap-x-6 gap-y-2">
           {NAV.map((item) => (

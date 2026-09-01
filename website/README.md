@@ -1,4 +1,4 @@
-# 晨微 官网
+# chenwei 官网
 
 单页落地页，和桌面应用完全分离：不复用 `packages/ui`，不进 pnpm workspace，自带 lockfile。
 

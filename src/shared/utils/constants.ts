@@ -3,5 +3,5 @@ export const MB = 1024 * KB
 export const GB = 1024 * MB
 
 export const APP_NAME = 'Cherry Studio'
-export const APP_DISPLAY_NAME = '晨微'
+export const APP_DISPLAY_NAME = 'chenwei'
 export const LATEST_PRIVACY_POLICY_VERSION = '20260820'

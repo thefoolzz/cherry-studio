@@ -2,7 +2,7 @@
   "name": "chenwei-website",
   "private": true,
   "type": "module",
-  "description": "晨微 官网落地页",
+  "description": "chenwei 官网落地页",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

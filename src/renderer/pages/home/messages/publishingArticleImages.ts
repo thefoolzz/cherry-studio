@@ -33,7 +33,7 @@ export function embedPublishingImages(markdown: string, imageFileIds: string[]):
   uniqueIds.forEach((id, index) => {
     if (embeddedIds.has(id)) return
 
-    const image = index === 0 ? `![封面图](attachment://${id})` : `![正文配图 ${index}](attachment://${id})`
+    const image = index === 0 ? `![Cover image](attachment://${id})` : `![Article image ${index}](attachment://${id})`
     if (index === 0) {
       addAfter(titleIndex, image)
       return

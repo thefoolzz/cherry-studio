@@ -32,7 +32,7 @@ function body({ index, progress }: SequenceState) {
 
 export function Stage({ index, progress }: SequenceState) {
   return (
-    <Frame badge={`${index + 1} / ${STEPS.length}`} title="晨微 · 多平台发布助手">
+    <Frame badge={`${index + 1} / ${STEPS.length}`} title="chenwei · 多平台发布助手">
       <div className="h-[356px] overflow-hidden px-5 py-5 md:h-[420px] md:px-7 md:py-6">
         <div key={STEPS[index].key} className="anim-rise">
           {body({ index, progress })}

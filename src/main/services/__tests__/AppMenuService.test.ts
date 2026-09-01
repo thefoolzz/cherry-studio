@@ -150,6 +150,6 @@ describe('AppMenuService', () => {
     const quitItem = (latestTemplate()[0].submenu as MenuItemConstructorOptions[]).find((item) => item.role === 'quit')
 
     expect(copyItem).toMatchObject({ role: 'copy', label: 'Copy' })
-    expect(quitItem).toMatchObject({ role: 'quit', label: 'Quit 晨微' })
+    expect(quitItem).toMatchObject({ role: 'quit', label: 'Quit chenwei' })
   })
 })

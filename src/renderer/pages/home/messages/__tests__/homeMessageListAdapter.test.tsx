@@ -495,9 +495,9 @@ describe('useHomeMessageListProviderValue topic image actions', () => {
     expect((displayParts[0] as { text: string }).text).not.toContain('我先说明')
     expect(displayParts[0]).toMatchObject({
       type: 'text',
-      text: expect.stringContaining('# 完整文章\n\n![封面图](attachment://cover-file-id)')
+      text: expect.stringContaining('# 完整文章\n\n![Cover image](attachment://cover-file-id)')
     })
-    expect((displayParts[0] as { text: string }).text).toContain('![正文配图 1](attachment://body-file-id)')
+    expect((displayParts[0] as { text: string }).text).toContain('![Article image 1](attachment://body-file-id)')
     expect(screen.getByTestId('publishing-draft-action')).toHaveAttribute(
       'data-markdown',
       (displayParts[0] as { text: string }).text

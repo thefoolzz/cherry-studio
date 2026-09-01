@@ -154,7 +154,7 @@ export function buildApp({
     .get(
       '/',
       () => ({
-        name: '晨微 API',
+        name: 'chenwei API',
         version: '1.0.0',
         endpoints: {
           health: 'GET /health',

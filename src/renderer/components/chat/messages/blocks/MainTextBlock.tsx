@@ -404,7 +404,9 @@ const MainTextBlock: React.FC<Props> = ({
         return withImages(withCitationTags(rawText, citations, sourceType))
       }
       if (toolCitations) {
-        return withImages(withToolCitationTags(rawText, toolCitations.citations, toolCitations.projection.byMarker).content)
+        return withImages(
+          withToolCitationTags(rawText, toolCitations.citations, toolCitations.projection.byMarker).content
+        )
       }
       return withImages(rawText)
     },

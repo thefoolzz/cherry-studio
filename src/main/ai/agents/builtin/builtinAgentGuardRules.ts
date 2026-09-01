@@ -59,11 +59,11 @@ export const BUILTIN_AGENT_TOOL_GUARD_RULES: readonly ToolGuardRule[] = [
     appliesTo: { roles: [BUILTIN_AGENT_ROLE.ASSISTANT] },
     match: { tool: 'Bash', when: feedbackSubmissionCommand },
     effect: 'ask',
-    reason: 'Submitting 晨微 feedback externally requires live per-call user approval.',
+    reason: 'Submitting chenwei feedback externally requires live per-call user approval.',
     headless: {
       predicate: 'either',
       reason:
-        'Headless channel or scheduled turns cannot submit 晨微 feedback. Keep only a sanitized local feedback draft for an interactive user to review and submit.'
+        'Headless channel or scheduled turns cannot submit chenwei feedback. Keep only a sanitized local feedback draft for an interactive user to review and submit.'
     }
   },
   {

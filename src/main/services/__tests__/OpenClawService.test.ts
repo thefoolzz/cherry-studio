@@ -586,7 +586,7 @@ describe('OpenClawService gateway status state machine', () => {
           )
         ).rejects.toMatchObject({
           kind: 'external_config_invalid',
-          message: expect.stringContaining("outside 晨微's managed provider section")
+          message: expect.stringContaining("outside chenwei's managed provider section")
         })
       }
     )
@@ -1813,7 +1813,7 @@ describe('OpenClawService gateway status state machine', () => {
         const result = await service.syncProviderConfig(legacyProvider, legacyModel)
 
         expect(result.success).toBe(false)
-        expect('message' in result && result.message).toContain("outside 晨微's managed provider section")
+        expect('message' in result && result.message).toContain("outside chenwei's managed provider section")
         expect((service as any).gatewayAuthToken).toBe(initialToken)
         expect(fs.readFileSync(configPath, 'utf-8')).toBe(original)
         const candidatePath = validateConfigSpy.mock.calls[0][1] as string

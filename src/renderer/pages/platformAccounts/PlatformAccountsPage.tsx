@@ -373,7 +373,7 @@ export default function PlatformAccountsPage() {
                 type="warning"
                 showIcon
                 description={t('platform_accounts.binding_hint', {
-                  defaultValue: 'Complete sign-in in {{platform}}. 晨微 keeps this account in an isolated session.',
+                  defaultValue: 'Complete sign-in in {{platform}}. chenwei keeps this account in an isolated session.',
                   platform: platformLabel(selectedAccount.platform, t)
                 })}
               />

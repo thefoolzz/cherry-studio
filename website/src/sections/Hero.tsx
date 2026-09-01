@@ -19,7 +19,7 @@ function HeroDownload({ state, os }: { state: ReleaseState; os: OsKey | null }) 
         </a>
       ) : (
         <a className={INK_BUTTON} href="#download">
-          下载晨微
+          下载chenwei
         </a>
       )}
       <a className={INK_BUTTON_OUTLINE} href="#download">

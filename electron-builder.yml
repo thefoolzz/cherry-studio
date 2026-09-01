@@ -1,5 +1,5 @@
 appId: com.kangfenmao.CherryStudio
-productName: molic
+productName: chenwei
 electronLanguages:
   - zh-CN
   - zh-TW
@@ -14,7 +14,7 @@ directories:
   buildResources: build
 
 protocols:
-  - name: molic
+  - name: chenwei
     schemes:
       - cherrystudio
 files:
@@ -93,8 +93,8 @@ extraResources:
   - from: "packages/provider-registry/data"
     to: "provider-registry"
 win:
-  executableName: molic
-  artifactName: molic-${version}-${arch}-setup.${ext}
+  executableName: chenwei
+  artifactName: chenwei-${version}-${arch}-setup.${ext}
   extraResources:
     - from: "node_modules/@aiany/sqlite-vec-windows-${arch}/vec0.dll"
       to: "app.asar.unpacked/node_modules/@aiany/sqlite-vec-windows-${arch}/vec0.dll"
@@ -105,7 +105,7 @@ win:
     sign: scripts/win-sign.js
   verifyUpdateCodeSignature: false
 nsis:
-  artifactName: molic-${version}-${arch}-setup.${ext}
+  artifactName: chenwei-${version}-${arch}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
@@ -115,12 +115,12 @@ nsis:
   buildUniversalInstaller: false
   differentialPackage: false
 portable:
-  artifactName: molic-${version}-${arch}-portable.${ext}
+  artifactName: chenwei-${version}-${arch}-portable.${ext}
   buildUniversalInstaller: false
 mac:
   entitlementsInherit: build/entitlements.mac.plist
   notarize: false
-  artifactName: molic-${version}-${arch}.${ext}
+  artifactName: chenwei-${version}-${arch}.${ext}
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
@@ -132,8 +132,8 @@ mac:
 dmg:
   writeUpdateInfo: false
 linux:
-  artifactName: molic-${version}-${arch}.${ext}
-  executableName: molic
+  artifactName: chenwei-${version}-${arch}.${ext}
+  executableName: chenwei
   target:
     - target: AppImage
     - target: deb
@@ -142,8 +142,8 @@ linux:
   category: Utility
   desktop:
     entry:
-      Name: molic
-      StartupWMClass: molic
+      Name: chenwei
+      StartupWMClass: chenwei
   mimeTypes:
     - x-scheme-handler/cherrystudio
 rpm:
@@ -168,7 +168,7 @@ releaseInfo:
 
     ✨ New Features
     - [Publishing] Edit each generated article before sending it to a publishing channel.
-    - [Website] Explore 晨微's multi-platform publishing workflow on the new product website.
+    - [Website] Explore chenwei's multi-platform publishing workflow on the new product website.
 
     🐛 Bug Fixes
     - [Publishing] Keep article edits synchronized with the generated draft and publishing action.
@@ -182,7 +182,7 @@ releaseInfo:
 
     ✨ 新功能
     - [发布] 支持在发送到发布平台前逐篇编辑生成的文章。
-    - [官网] 新增产品官网，展示晨微的多平台内容发布流程。
+    - [官网] 新增产品官网，展示chenwei的多平台内容发布流程。
 
     🐛 问题修复
     - [发布] 修复文章编辑内容与生成草稿及发布操作不同步的问题。

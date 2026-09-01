@@ -28,6 +28,6 @@ export const FABRICATED = ['日租 299 元起', '美兰机场店']
 
 export const CHECKS = ['日租价格与押金规则', '取还车门店与接送方式']
 
-export const ACCOUNT = { name: '晨微示例号', platform: '微信公众号' }
+export const ACCOUNT = { name: 'chenwei示例号', platform: '微信公众号' }
 
 export const TASK_STATES = ['已就绪', '打开公众号后台', '上传配图', '创建草稿']

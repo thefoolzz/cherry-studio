@@ -300,7 +300,7 @@ export class Application {
     const result = await dialog.showMessageBox({
       type: 'error',
       title: 'Unable to Start',
-      message: `晨微 could not start because ${error.serviceName} failed to initialize.`,
+      message: `chenwei could not start because ${error.serviceName} failed to initialize.`,
       detail:
         'Try restarting the application. If the problem persists, check the application logs for detailed error information.',
       buttons: ['Exit', 'Restart'],
