@@ -1,5 +1,9 @@
 [
   {
+    "version": "2.0.11",
+    "releaseNotes": "<!--LANG:en-->\nchenwei 2.0.11 - Unified Article Creation and Publishing\n\n✨ New Features\n- [Publishing] Generate higher-quality articles with varied image plans, edit drafts, save reusable templates, and create WeChat drafts from one conversation entry while keeping planning text out of published content.\n\n🐛 Bug Fixes\n- [Templates] Long content-type labels stay inside cards and remain readable from the beginning.\n\n💄 Improvements\n- [Brand] The desktop app, installers, website, and product-facing text now consistently use chenwei.\n\n<!--LANG:zh-CN-->\nchenwei 2.0.11 - 文章生成与发布工作流升级\n\n✨ 新功能\n- [发布] 通过一个对话入口生成质量更高的文章与差异化配图方案，支持编辑草稿、保存复用模板并创建微信公众号草稿，同时避免把规划和思考内容带入发布正文。\n\n🐛 问题修复\n- [模板] 长内容类型标签保持在卡片内，并从开头展示可读内容。\n\n💄 改进\n- [品牌] 桌面应用、安装包、官网和产品内文案统一使用 chenwei。\n<!--LANG:END-->\n"
+  },
+  {
     "version": "2.0.10",
     "releaseNotes": "<!--LANG:en-->\nCherry Studio 2.0.10 - Publishing and Download Improvements\n\n✨ New Features\n- [Publishing] Edit each generated article before sending it to a publishing channel.\n- [Website] Explore chenwei's multi-platform publishing workflow on the new product website.\n\n🐛 Bug Fixes\n- [Publishing] Keep article edits synchronized with the generated draft and publishing action.\n\n💄 Improvements\n- [Website] Download choices now appear from a built-in release list even when GitHub is unavailable, with the visitor's platform shown first.\n- [Website] Refresh product messaging for WeChat, Douyin, Xiaohongshu, and Zhihu publishing.\n\n<!--LANG:zh-CN-->\nCherry Studio 2.0.10 - 发布与下载体验升级\n\n✨ 新功能\n- [发布] 支持在发送到发布平台前逐篇编辑生成的文章。\n- [官网] 新增产品官网，展示chenwei的多平台内容发布流程。\n\n🐛 问题修复\n- [发布] 修复文章编辑内容与生成草稿及发布操作不同步的问题。\n\n💄 改进\n- [官网] GitHub 暂时不可用时仍从内置版本列表展示下载选项，并优先显示访客当前平台。\n- [官网] 更新产品介绍，完整呈现微信公众号、抖音、小红书和知乎发布能力。\n<!--LANG:END-->\n"
   },

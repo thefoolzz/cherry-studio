@@ -164,30 +164,26 @@ artifactBuildCompleted: scripts/artifact-build-completed.js
 releaseInfo:
   releaseNotes: |
     <!--LANG:en-->
-    Cherry Studio 2.0.10 - Publishing and Download Improvements
+    chenwei 2.0.11 - Unified Article Creation and Publishing
 
     ✨ New Features
-    - [Publishing] Edit each generated article before sending it to a publishing channel.
-    - [Website] Explore chenwei's multi-platform publishing workflow on the new product website.
+    - [Publishing] Generate higher-quality articles with varied image plans, edit drafts, save reusable templates, and create WeChat drafts from one conversation entry while keeping planning text out of published content.
 
     🐛 Bug Fixes
-    - [Publishing] Keep article edits synchronized with the generated draft and publishing action.
+    - [Templates] Long content-type labels stay inside cards and remain readable from the beginning.
 
     💄 Improvements
-    - [Website] Download choices now appear from a built-in release list even when GitHub is unavailable, with the visitor's platform shown first.
-    - [Website] Refresh product messaging for WeChat, Douyin, Xiaohongshu, and Zhihu publishing.
+    - [Brand] The desktop app, installers, website, and product-facing text now consistently use chenwei.
 
     <!--LANG:zh-CN-->
-    Cherry Studio 2.0.10 - 发布与下载体验升级
+    chenwei 2.0.11 - 文章生成与发布工作流升级
 
     ✨ 新功能
-    - [发布] 支持在发送到发布平台前逐篇编辑生成的文章。
-    - [官网] 新增产品官网，展示chenwei的多平台内容发布流程。
+    - [发布] 通过一个对话入口生成质量更高的文章与差异化配图方案，支持编辑草稿、保存复用模板并创建微信公众号草稿，同时避免把规划和思考内容带入发布正文。
 
     🐛 问题修复
-    - [发布] 修复文章编辑内容与生成草稿及发布操作不同步的问题。
+    - [模板] 长内容类型标签保持在卡片内，并从开头展示可读内容。
 
     💄 改进
-    - [官网] GitHub 暂时不可用时仍从内置版本列表展示下载选项，并优先显示访客当前平台。
-    - [官网] 更新产品介绍，完整呈现微信公众号、抖音、小红书和知乎发布能力。
+    - [品牌] 桌面应用、安装包、官网和产品内文案统一使用 chenwei。
     <!--LANG:END-->
