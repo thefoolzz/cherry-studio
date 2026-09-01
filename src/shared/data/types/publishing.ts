@@ -1,5 +1,5 @@
 /**
- * Publishing account and draft task entities.
+ * Publishing account, draft task, and writing-template entities.
  *
  * Platform sessions and publishing side effects are owned by the main
  * publishing service; this module only describes their persisted snapshots.
@@ -28,6 +28,38 @@ export const PublishingTaskStatusSchema = z.enum([
 ])
 export type PublishingTaskStatus = z.infer<typeof PublishingTaskStatusSchema>
 
+export const PublishingTemplateSourceSchema = z.enum(['generated', 'url', 'pasted'])
+export type PublishingTemplateSource = z.infer<typeof PublishingTemplateSourceSchema>
+
+const PublishingTemplateInstructionSchema = z.string().trim().min(1).max(1000)
+
+export const PublishingTemplateSectionSchema = z.strictObject({
+  role: z.string().trim().min(1).max(100),
+  guidance: PublishingTemplateInstructionSchema,
+  required: z.boolean()
+})
+export type PublishingTemplateSection = z.infer<typeof PublishingTemplateSectionSchema>
+
+export const PublishingTemplateVariableSchema = z.strictObject({
+  name: z.string().trim().min(1).max(100),
+  description: z.string().trim().min(1).max(500),
+  required: z.boolean()
+})
+export type PublishingTemplateVariable = z.infer<typeof PublishingTemplateVariableSchema>
+
+/** A reusable writing strategy. It intentionally excludes source facts and long copied passages. */
+export const PublishingTemplateBlueprintSchema = z.strictObject({
+  contentType: z.string().trim().min(1).max(100),
+  summary: z.string().trim().min(1).max(1000),
+  voice: z.array(PublishingTemplateInstructionSchema).max(12),
+  structure: z.array(PublishingTemplateSectionSchema).min(1).max(16),
+  writingRules: z.array(PublishingTemplateInstructionSchema).max(16),
+  avoid: z.array(PublishingTemplateInstructionSchema).max(16),
+  variables: z.array(PublishingTemplateVariableSchema).max(16),
+  qualityChecks: z.array(PublishingTemplateInstructionSchema).max(16)
+})
+export type PublishingTemplateBlueprint = z.infer<typeof PublishingTemplateBlueprintSchema>
+
 export const PublishingAccountSchema = z.strictObject({
   id: z.uuidv4(),
   platform: PublishingPlatformSchema,
@@ -55,3 +87,16 @@ export const PublishingTaskSchema = z.strictObject({
   updatedAt: z.iso.datetime()
 })
 export type PublishingTask = z.infer<typeof PublishingTaskSchema>
+
+export const PublishingTemplateSchema = z.strictObject({
+  id: z.uuidv4(),
+  name: z.string().min(1),
+  description: z.string().min(1),
+  sourceType: PublishingTemplateSourceSchema,
+  sourceTitle: z.string().min(1).optional(),
+  sourceUrl: z.string().url().optional(),
+  blueprint: PublishingTemplateBlueprintSchema,
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime()
+})
+export type PublishingTemplate = z.infer<typeof PublishingTemplateSchema>

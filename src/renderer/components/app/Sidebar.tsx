@@ -2,7 +2,6 @@ import { usePersistCache } from '@data/hooks/useCache'
 import { useQuery } from '@data/hooks/useDataApi'
 import { usePreference } from '@data/hooks/usePreference'
 import { arrayMove } from '@dnd-kit/sortable'
-import { useAgents } from '@renderer/hooks/agent/useAgent'
 import { useTabs } from '@renderer/hooks/tab'
 import { useAssistantsApi } from '@renderer/hooks/useAssistant'
 import useAvatar from '@renderer/hooks/useAvatar'
@@ -21,7 +20,7 @@ import {
   resolveSidebarActiveItem,
   tabBelongsToApp
 } from '@renderer/utils/sidebar'
-import { AlertTriangle, Link2 } from 'lucide-react'
+import { AlertTriangle, BookOpenText, Link2 } from 'lucide-react'
 import type { Ref } from 'react'
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -48,17 +47,14 @@ export default function Sidebar({ ref }: { ref?: Ref<HTMLDivElement | null> }) {
   const {
     favorites,
     miniAppFavoriteIds,
-    agentFavoriteIds,
     assistantFavoriteIds,
     setAppPinned,
     removeMiniApp,
-    removeAgent,
     removeAssistant,
     reorderFavorites
   } = useSidebarFavorites()
   const { activeTab, tabs, updateTab, openTab, setActiveTab } = useTabs()
   const { miniApps, pinned } = useMiniApps({ enabled: miniAppFavoriteIds.length > 0 })
-  const { agents } = useAgents({ enabled: agentFavoriteIds.length > 0 })
   const { assistants } = useAssistantsApi({ enabled: assistantFavoriteIds.length > 0 })
   const { data: publishingAccounts } = useQuery('/publishing-accounts', {
     query: { platform: 'wechat', status: 'expired', limit: 1 }
@@ -67,10 +63,8 @@ export default function Sidebar({ ref }: { ref?: Ref<HTMLDivElement | null> }) {
   // Pinned entity rows render through the same icon renderers as their rails, so they
   // follow the same icon-type preferences instead of always showing the emoji.
   const [assistantIconType] = usePreference('assistant.icon_type')
-  const [agentIconType] = usePreference('agent.icon_type')
   const [defaultModelId] = usePreference('chat.default_model_id')
 
-  const installedAgents = useMemo(() => new Map(agents.map((agent) => [agent.id, agent])), [agents])
   const installedAssistants = useMemo(
     () => new Map(assistants.map((assistant) => [assistant.id, assistant])),
     [assistants]
@@ -155,6 +149,7 @@ export default function Sidebar({ ref }: { ref?: Ref<HTMLDivElement | null> }) {
 
   const activeItem = resolveSidebarActiveItem(pathname)
   const platformAccountsActive = pathname === '/platform-accounts'
+  const writingTemplatesActive = pathname === '/writing-templates'
   const hasPublishingWarning = (publishingAccounts?.total ?? 0) > 0
 
   const navigateRouteTab = useCallback(
@@ -232,6 +227,17 @@ export default function Sidebar({ ref }: { ref?: Ref<HTMLDivElement | null> }) {
           navigateRouteTab('/platform-accounts', t('platform_accounts.title', { defaultValue: 'Platform accounts' }), {
             inNewTab: true
           })
+      },
+      {
+        key: 'fixed:writing-templates',
+        label: t('writing_templates.title'),
+        renderIcon: (size: number) => <BookOpenText size={size} strokeWidth={1.6} />,
+        isActive: (active: { activeItem: string }) => active.activeItem === 'writing-templates',
+        onOpen: () => navigateRouteTab('/writing-templates', t('writing_templates.title')),
+        onOpenNewTab: () =>
+          navigateRouteTab('/writing-templates', t('writing_templates.title'), {
+            inNewTab: true
+          })
       }
     ],
     [hasPublishingWarning, navigateRouteTab, t]
@@ -269,16 +275,8 @@ export default function Sidebar({ ref }: { ref?: Ref<HTMLDivElement | null> }) {
     [activeTab, navigateRouteTab, openableMiniAppById, setActiveTab, t, tabs]
   )
 
-  // Pinned entities reuse tabs like mini apps do; the route interceptor turns the
-  // `agentId` / `assistantId` param into that entity's most recent conversation.
-  const handleOpenAgentTab = useCallback(
-    (agentId: string, options?: { inNewTab?: boolean }) => {
-      const agent = installedAgents.get(agentId)
-      if (!agent) return
-      navigateRouteTab(`/app/agents?agentId=${encodeURIComponent(agentId)}`, agent.name, options)
-    },
-    [installedAgents, navigateRouteTab]
-  )
+  // Pinned assistants reuse tabs like mini apps do; the route interceptor turns the
+  // `assistantId` param into that assistant's most recent conversation.
   const handleOpenAssistantTab = useCallback(
     (assistantId: string, options?: { inNewTab?: boolean }) => {
       const assistant = installedAssistants.get(assistantId)
@@ -295,37 +293,29 @@ export default function Sidebar({ ref }: { ref?: Ref<HTMLDivElement | null> }) {
       t,
       defaultPaintingProvider,
       installedMiniApps: openableMiniAppById,
-      installedAgents,
       installedAssistants,
       assistantIconType,
-      agentIconType,
       defaultModelId,
       isRequiredApp: (id) => REQUIRED_SIDEBAR_FAVORITE_SET.has(id),
       openApp: handleNavigate,
       openMiniApp: handleOpenMiniAppTab,
-      openAgent: handleOpenAgentTab,
       openAssistant: handleOpenAssistantTab,
       removeApp: handleRemoveSidebarFavorite,
       removeMiniApp,
-      removeAgent,
       removeAssistant
     }),
     [
       t,
       defaultPaintingProvider,
       openableMiniAppById,
-      installedAgents,
       installedAssistants,
       assistantIconType,
-      agentIconType,
       defaultModelId,
       handleNavigate,
       handleOpenMiniAppTab,
-      handleOpenAgentTab,
       handleOpenAssistantTab,
       handleRemoveSidebarFavorite,
       removeMiniApp,
-      removeAgent,
       removeAssistant
     ]
   )
@@ -388,7 +378,14 @@ export default function Sidebar({ ref }: { ref?: Ref<HTMLDivElement | null> }) {
   const sidebarProps = {
     entries,
     fixedEntries,
-    active: { activeItem: platformAccountsActive ? 'platform-accounts' : activeItem, activeTabId: activeMiniAppId },
+    active: {
+      activeItem: writingTemplatesActive
+        ? 'writing-templates'
+        : platformAccountsActive
+          ? 'platform-accounts'
+          : activeItem,
+      activeTabId: activeMiniAppId
+    },
     title: sidebarUser.name,
     logo: sidebarLogo,
     actions: (footerLayout: SidebarVisibleLayout, onOverlayOpenChange?: (open: boolean) => void) => (

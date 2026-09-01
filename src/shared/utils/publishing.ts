@@ -1,5 +1,6 @@
 const PENDING_SECTION_HEADING = /^(?:#{1,3})\s*(?:发布前检查|发布前待确认|待确认事项)\s*$/
 const PENDING_PLACEHOLDER = /\[待补充[：:]\s*([^\]]+)\]/g
+const ARTICLE_TITLE_HEADING = /^\s{0,3}#\s+\S/
 
 export interface PublishingContentDraft {
   title?: string
@@ -9,7 +10,10 @@ export interface PublishingContentDraft {
 
 export function normalizePublishingMarkdown(source: string): string {
   const fenced = source.match(/```(?:markdown|md)\s*\n([\s\S]*?)\n```/i)?.[1]
-  return (fenced ?? source).trim()
+  const normalized = (fenced ?? source).trim()
+  const lines = normalized.split('\n')
+  const articleStartIndex = lines.findIndex((line) => ARTICLE_TITLE_HEADING.test(line))
+  return (articleStartIndex > 0 ? lines.slice(articleStartIndex).join('\n') : normalized).trim()
 }
 
 export function parsePublishingContentDraft(source: string): PublishingContentDraft {

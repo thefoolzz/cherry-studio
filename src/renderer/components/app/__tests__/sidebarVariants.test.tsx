@@ -1,5 +1,4 @@
 import type { Assistant } from '@renderer/types/assistant'
-import type { AgentEntity } from '@shared/data/api/schemas/agents'
 import type { SidebarFavoriteItem } from '@shared/data/preference/preferenceTypes'
 import type { MiniApp } from '@shared/data/types/miniApp'
 import { render, screen } from '@testing-library/react'
@@ -12,19 +11,15 @@ function createContext(overrides: Partial<SidebarVariantContext> = {}): SidebarV
     t: (key: string) => key,
     defaultPaintingProvider: 'aihubmix',
     installedMiniApps: new Map<string, MiniApp>(),
-    installedAgents: new Map<string, AgentEntity>(),
     installedAssistants: new Map<string, Assistant>(),
     assistantIconType: 'emoji',
-    agentIconType: 'emoji',
     defaultModelId: null,
     isRequiredApp: () => false,
     openApp: vi.fn(),
     openMiniApp: vi.fn(),
-    openAgent: vi.fn(),
     openAssistant: vi.fn(),
     removeApp: vi.fn(),
     removeMiniApp: vi.fn(),
-    removeAgent: vi.fn(),
     removeAssistant: vi.fn(),
     ...overrides
   }
@@ -32,10 +27,6 @@ function createContext(overrides: Partial<SidebarVariantContext> = {}): SidebarV
 
 function createAssistant(overrides: Partial<Assistant> = {}): Assistant {
   return { id: 'assistant-1', name: 'Alpha', emoji: '🍒', modelId: 'openai::gpt-5', ...overrides } as Assistant
-}
-
-function createAgent(configuration?: Record<string, unknown>): AgentEntity {
-  return { id: 'agent-1', name: 'Agent', configuration } as unknown as AgentEntity
 }
 
 const assistantFavorite: SidebarFavoriteItem = { type: 'assistant', id: 'assistant-1' }
@@ -112,15 +103,10 @@ describe('sidebarVariants icons', () => {
     expect(container.querySelector('svg')).not.toBeNull()
   })
 
-  it('keeps a renderable glyph for an agent with no configured avatar', () => {
-    const ctx = createContext({
-      installedAgents: new Map([['agent-1', createAgent()]])
-    })
-
-    const entry = resolveSidebarEntry(agentFavorite, ctx)
-    render(<div data-testid="icon">{entry?.renderIcon(18, 'lg')}</div>)
-
-    expect(screen.getByTestId('icon')).not.toHaveTextContent('⭐️')
+  it('drops an agent favorite left over from an older build', () => {
+    // Agents are no longer a conversation entry, but the favorite type is still part of
+    // the stored preference shape. Such a row must resolve away, not throw.
+    expect(resolveSidebarEntry(agentFavorite, createContext())).toBeNull()
   })
 
   describe('onOpen and onOpenNewTab actions', () => {
@@ -160,23 +146,6 @@ describe('sidebarVariants icons', () => {
 
       entry?.onOpenNewTab?.()
       expect(openMiniApp).toHaveBeenCalledWith('mini-1', { inNewTab: true })
-    })
-
-    it('wires openAgent with and without inNewTab for agent variant', () => {
-      const openAgent = vi.fn()
-      const ctx = createContext({
-        openAgent,
-        installedAgents: new Map([['agent-1', createAgent()]])
-      })
-
-      const entry = resolveSidebarEntry(agentFavorite, ctx)
-      expect(entry).not.toBeNull()
-
-      entry?.onOpen()
-      expect(openAgent).toHaveBeenCalledWith('agent-1')
-
-      entry?.onOpenNewTab?.()
-      expect(openAgent).toHaveBeenCalledWith('agent-1', { inNewTab: true })
     })
 
     it('wires openAssistant with and without inNewTab for assistant variant', () => {

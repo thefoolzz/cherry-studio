@@ -20,6 +20,7 @@ import {
 import HistoryRecordsView from '@renderer/components/history/HistoryRecordsView'
 import { ConversationResourceView } from '@renderer/components/resourceCatalog/conversation'
 import { usePersistCache } from '@renderer/data/hooks/useCache'
+import { useAgents } from '@renderer/hooks/agent/useAgent'
 import { useCommandHandler } from '@renderer/hooks/command'
 import { useAssistantTopicsSource } from '@renderer/hooks/resourceViewSources'
 import { useCurrentTabId, useIsActiveTab, useTabSelfVisuals } from '@renderer/hooks/tab'
@@ -137,6 +138,7 @@ const HomePage: FC = () => {
     isRefreshing: isAssistantsRefreshing,
     addAssistant
   } = useAssistants()
+  const { agents, isLoading: isAgentsLoading } = useAgents({ enabled: assistantPickerOpen })
   const assistantIdSet = useMemo(() => new Set(assistants.map((assistant) => assistant.id)), [assistants])
   const validLastUsedAssistantId =
     lastUsedAssistantId && assistantIdSet.has(lastUsedAssistantId) ? lastUsedAssistantId : undefined
@@ -397,6 +399,7 @@ const HomePage: FC = () => {
   const resolveAssistantIdForSelection = useCallback(
     async (selection: AssistantConversationSelection) => {
       if (selection.type === 'assistant') return selection.assistantId
+      if (selection.type !== 'catalog') throw new Error('Agent selection cannot create a chat topic')
 
       // Reuse an assistant already created from this preset (matched by name, the only persistent
       // link we have) instead of creating a duplicate every time the preset is picked.
@@ -417,6 +420,10 @@ const HomePage: FC = () => {
       // while it's still visible (which reads as a black/white flash + the dialog reopening).
       setAssistantPickerOpen(false)
       try {
+        if (selection.type === 'agent') {
+          await navigate({ to: '/app/agents', search: { agentId: selection.agentId }, replace: true })
+          return
+        }
         const assistantId = await resolveAssistantIdForSelection(selection)
 
         const result = await reuseOrCreateTopic(assistantId)
@@ -429,13 +436,13 @@ const HomePage: FC = () => {
           })
         }
       } catch (err) {
-        logger.error('Failed to create assistant conversation from classic-layout picker', err as Error)
+        logger.error('Failed to open conversation from unified picker', err as Error)
         toast.error(formatErrorMessageWithPrefix(err, t('common.error')))
       } finally {
         isCreatingTopicRef.current = false
       }
     },
-    [activateCreatedTopic, refreshTopics, resolveAssistantIdForSelection, reuseOrCreateTopic, t]
+    [activateCreatedTopic, navigate, refreshTopics, resolveAssistantIdForSelection, reuseOrCreateTopic, t]
   )
 
   const resolveEmptyTopic = useCallback(
@@ -754,15 +761,17 @@ const HomePage: FC = () => {
           )
         }
       : null
-  const assistantPickerDialog = isClassicTopicLayout ? (
+  const assistantPickerDialog = (
     <AssistantConversationPickerDialog
       open={assistantPickerOpen}
       onOpenChange={setAssistantPickerOpen}
       assistants={assistants}
       assistantsLoading={isAssistantsLoading || isAssistantsRefreshing}
+      agents={agents}
+      agentsLoading={isAgentsLoading}
       onSelect={handleAssistantConversationSelect}
     />
-  ) : null
+  )
 
   const centerSurface = historyRecordsCenter ?? resourceCenter
 

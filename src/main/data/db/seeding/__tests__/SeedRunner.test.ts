@@ -186,6 +186,10 @@ describe('SeedRunner', () => {
 
     const assistants = await dbh.db.select().from(assistantTable)
     expect(assistants).toHaveLength(2)
-    expect(assistants.filter((assistant) => assistant.id === PUBLISHING_ASSISTANT_ID)).toHaveLength(1)
+    const publishingAssistant = assistants.find((assistant) => assistant.id === PUBLISHING_ASSISTANT_ID)
+    expect(publishingAssistant).toBeDefined()
+    expect(publishingAssistant?.prompt).toContain('每个段落必须至少新增一项')
+    expect(publishingAssistant?.prompt).toContain('提出三个在核心判断、证据组织或叙事路径上真正不同的角度')
+    expect(publishingAssistant?.prompt).toContain('每张图必须在主体或动作、景别或机位')
   })
 })

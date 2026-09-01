@@ -17,7 +17,7 @@ import { openRoute } from '@renderer/services/mainWindowNavigation'
 import { toast } from '@renderer/services/toast'
 import type { PublishingAccount } from '@shared/data/types/publishing'
 import { parsePublishingContentDraft } from '@shared/utils/publishing'
-import { CircleAlert, PencilLine, Send } from 'lucide-react'
+import { BookmarkPlus, CircleAlert, PencilLine, Send } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -41,6 +41,7 @@ interface PublishingDraftActionProps {
   markdown: string
   topicName: string
   imageFileIds?: string[]
+  onCreateTemplate: () => Promise<void>
   onSaveDraft: (draft: PublishingArticleDraft) => Promise<void>
 }
 
@@ -48,6 +49,7 @@ export function PublishingDraftAction({
   markdown,
   topicName,
   imageFileIds = [],
+  onCreateTemplate,
   onSaveDraft
 }: PublishingDraftActionProps) {
   const { t } = useTranslation()
@@ -55,6 +57,7 @@ export function PublishingDraftAction({
   const [selectedAccountId, setSelectedAccountId] = useState('')
   const [title, setTitle] = useState('')
   const [busy, setBusy] = useState(false)
+  const [templateBusy, setTemplateBusy] = useState(false)
   const [publishedSource, setPublishedSource] = useState<string | null>(null)
   const [savedDraft, setSavedDraft] = useState<{ source: string; draft: PublishingArticleDraft } | null>(null)
   const [editingDraft, setEditingDraft] = useState<PublishingArticleDraft | null>(null)
@@ -110,6 +113,18 @@ export function PublishingDraftAction({
     }
   }, [articleDraft.markdown, imageFileIds, markdown, selectedAccount, title, t])
 
+  const handleCreateTemplate = useCallback(async () => {
+    setTemplateBusy(true)
+    try {
+      await onCreateTemplate()
+    } catch (error) {
+      logger.error('Failed to start writing-template creation', error as Error)
+      toast.error(error instanceof Error ? error.message : t('message.error.operation_unavailable'))
+    } finally {
+      setTemplateBusy(false)
+    }
+  }, [onCreateTemplate, t])
+
   if (publishedSource === markdown || contentDraft.markdown.length < 20) return null
 
   return (
@@ -118,6 +133,10 @@ export function PublishingDraftAction({
         <Button variant="outline" size="sm" onClick={() => setEditingDraft(articleDraft)}>
           <PencilLine size={14} />
           {t('common.edit')}
+        </Button>
+        <Button variant="outline" size="sm" loading={templateBusy} onClick={() => void handleCreateTemplate()}>
+          <BookmarkPlus size={14} />
+          {t('chat.publishing.save_template')}
         </Button>
         <Button size="sm" onClick={handleOpen} disabled={isLoading}>
           <Send size={14} />

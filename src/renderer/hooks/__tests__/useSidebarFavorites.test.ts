@@ -26,22 +26,22 @@ describe('useSidebarFavorites', () => {
     expect(setFavorites).not.toHaveBeenCalled()
   })
 
-  describe('entity favorites (agents / assistants)', () => {
+  describe('entity favorites (assistants)', () => {
     const REQUIRED_ASSISTANTS = { type: 'app', id: 'assistants' } as const
 
-    it('toggles an agent favorite on and exposes it in agentFavoriteIds', () => {
+    it('toggles an assistant favorite on', () => {
       const setFavorites = vi.fn().mockResolvedValue(undefined)
       MockUsePreferenceUtils.mockPreferenceReturn('ui.sidebar.favorites', [], setFavorites)
 
       const { result } = renderHook(() => useSidebarFavorites())
 
       act(() => {
-        result.current.toggleAgent('agent-1')
+        result.current.toggleAssistant('assistant-1')
       })
 
       // Mutations operate on the ordered visible list, so the required
       // assistants app is persisted alongside the newly added entity.
-      expect(setFavorites).toHaveBeenCalledWith([REQUIRED_ASSISTANTS, { type: 'agent', id: 'agent-1' }])
+      expect(setFavorites).toHaveBeenCalledWith([REQUIRED_ASSISTANTS, { type: 'assistant', id: 'assistant-1' }])
     })
 
     it('toggles an assistant favorite off and removes it from assistantFavoriteIds', () => {
@@ -62,7 +62,7 @@ describe('useSidebarFavorites', () => {
       expect(setFavorites).toHaveBeenCalledWith([REQUIRED_ASSISTANTS])
     })
 
-    it('segregates agent and assistant favorite ids by type', () => {
+    it('picks assistant favorite ids out of the mixed list', () => {
       MockUsePreferenceUtils.mockPreferenceReturn('ui.sidebar.favorites', [
         { type: 'agent', id: 'agent-1' },
         { type: 'assistant', id: 'assistant-1' },
@@ -71,17 +71,16 @@ describe('useSidebarFavorites', () => {
 
       const { result } = renderHook(() => useSidebarFavorites())
 
-      expect(result.current.agentFavoriteIds).toEqual(['agent-1'])
       expect(result.current.assistantFavoriteIds).toEqual(['assistant-1'])
     })
 
-    it('removes an agent favorite via removeAgent', () => {
+    it('removes one assistant favorite and keeps the rest of the list', () => {
       const setFavorites = vi.fn().mockResolvedValue(undefined)
       MockUsePreferenceUtils.mockPreferenceReturn(
         'ui.sidebar.favorites',
         [
-          { type: 'agent', id: 'agent-1' },
-          { type: 'assistant', id: 'assistant-1' }
+          { type: 'assistant', id: 'assistant-1' },
+          { type: 'assistant', id: 'assistant-2' }
         ],
         setFavorites
       )
@@ -89,10 +88,10 @@ describe('useSidebarFavorites', () => {
       const { result } = renderHook(() => useSidebarFavorites())
 
       act(() => {
-        result.current.removeAgent('agent-1')
+        result.current.removeAssistant('assistant-1')
       })
 
-      expect(setFavorites).toHaveBeenCalledWith([REQUIRED_ASSISTANTS, { type: 'assistant', id: 'assistant-1' }])
+      expect(setFavorites).toHaveBeenCalledWith([REQUIRED_ASSISTANTS, { type: 'assistant', id: 'assistant-2' }])
     })
 
     it('skips removing an assistant that is not favorited', () => {

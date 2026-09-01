@@ -1,3 +1,4 @@
+import type { PublishingTemplateBlueprint } from '@shared/data/types/publishing'
 import { sql } from 'drizzle-orm'
 import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
@@ -56,7 +57,30 @@ export const publishingTaskTable = sqliteTable(
   ]
 )
 
+/** Reusable writing strategies extracted from generated, pasted, or linked articles. */
+export const publishingTemplateTable = sqliteTable(
+  'publishing_template',
+  {
+    id: uuidPrimaryKey(),
+    name: text().notNull(),
+    description: text().notNull(),
+    sourceType: text('source_type').notNull(),
+    sourceTitle: text('source_title'),
+    sourceUrl: text('source_url'),
+    blueprint: text({ mode: 'json' }).$type<PublishingTemplateBlueprint>().notNull(),
+    ...createUpdateTimestamps
+  },
+  (t) => [
+    index('publishing_template_updated_at_idx').on(t.updatedAt),
+    check('publishing_template_source_type_check', sql`${t.sourceType} IN ('generated', 'url', 'pasted')`),
+    check('publishing_template_name_check', sql`length(trim(${t.name})) > 0`),
+    check('publishing_template_description_check', sql`length(trim(${t.description})) > 0`)
+  ]
+)
+
 export type PublishingAccountRow = typeof publishingAccountTable.$inferSelect
 export type InsertPublishingAccountRow = typeof publishingAccountTable.$inferInsert
 export type PublishingTaskRow = typeof publishingTaskTable.$inferSelect
 export type InsertPublishingTaskRow = typeof publishingTaskTable.$inferInsert
+export type PublishingTemplateRow = typeof publishingTemplateTable.$inferSelect
+export type InsertPublishingTemplateRow = typeof publishingTemplateTable.$inferInsert

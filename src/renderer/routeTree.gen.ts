@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WritingTemplatesRouteImport } from './routes/writing-templates'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PlatformAccountsRouteImport } from './routes/platform-accounts'
 import { Route as AppRouteImport } from './routes/app'
@@ -63,6 +64,11 @@ import { Route as AppPaintingsSplatRouteImport } from './routes/app/paintings/$'
 import { Route as AppMiniAppAppIdRouteImport } from './routes/app/mini-app/$appId'
 import { Route as SettingsMcpSettingsServerIdRouteImport } from './routes/settings/mcp/settings.$serverId'
 
+const WritingTemplatesRoute = WritingTemplatesRouteImport.update({
+  id: '/writing-templates',
+  path: '/writing-templates',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -337,6 +343,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
   '/platform-accounts': typeof PlatformAccountsRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/writing-templates': typeof WritingTemplatesRoute
   '/app/agents': typeof AppAgentsRoute
   '/app/chat': typeof AppChatRoute
   '/app/code': typeof AppCodeRoute
@@ -391,6 +398,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/app': typeof AppRouteWithChildren
   '/platform-accounts': typeof PlatformAccountsRoute
+  '/writing-templates': typeof WritingTemplatesRoute
   '/app/agents': typeof AppAgentsRoute
   '/app/chat': typeof AppChatRoute
   '/app/code': typeof AppCodeRoute
@@ -445,6 +453,7 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/platform-accounts': typeof PlatformAccountsRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/writing-templates': typeof WritingTemplatesRoute
   '/app/agents': typeof AppAgentsRoute
   '/app/chat': typeof AppChatRoute
   '/app/code': typeof AppCodeRoute
@@ -502,6 +511,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/platform-accounts'
     | '/settings'
+    | '/writing-templates'
     | '/app/agents'
     | '/app/chat'
     | '/app/code'
@@ -556,6 +566,7 @@ export interface FileRouteTypes {
   to:
     | '/app'
     | '/platform-accounts'
+    | '/writing-templates'
     | '/app/agents'
     | '/app/chat'
     | '/app/code'
@@ -609,6 +620,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/platform-accounts'
     | '/settings'
+    | '/writing-templates'
     | '/app/agents'
     | '/app/chat'
     | '/app/code'
@@ -665,10 +677,18 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   PlatformAccountsRoute: typeof PlatformAccountsRoute
   SettingsRoute: typeof SettingsRouteWithChildren
+  WritingTemplatesRoute: typeof WritingTemplatesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/writing-templates': {
+      id: '/writing-templates'
+      path: '/writing-templates'
+      fullPath: '/writing-templates'
+      preLoaderRoute: typeof WritingTemplatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -1187,6 +1207,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   PlatformAccountsRoute: PlatformAccountsRoute,
   SettingsRoute: SettingsRouteWithChildren,
+  WritingTemplatesRoute: WritingTemplatesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

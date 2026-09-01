@@ -30,6 +30,14 @@ interface SidebarAppDefinition<Id extends SidebarFavorite = SidebarFavorite> {
   resolveUrl?: (ctx: SidebarNavContext) => string
   /** Highlight the sidebar entry only on the exact base route, not on sub-routes owned by the app. */
   exactRouteFocus?: boolean
+  /** Visible sidebar entry that owns this route when the app itself is hidden. */
+  sidebarActiveId?: Exclude<SidebarFavorite, 'openclaw'>
+  /**
+   * Not offered as a sidebar / launchpad entry. The app keeps its route identity here —
+   * `conversationRoute` in particular stays resolvable, which is what main-process
+   * conversation navigation looks up — it just cannot be pinned or listed.
+   */
+  sidebarEligible?: false
   conversationRoute?: SidebarConversationRoute
 }
 
@@ -74,6 +82,10 @@ const SIDEBAR_APP_DEFINITIONS = [
   {
     id: 'agents',
     routePrefix: '/app/agents',
+    // Chat is the product's single conversation entry; agents stay reachable by deep
+    // link, notification, and their own route, but are not a second entry point.
+    sidebarEligible: false,
+    sidebarActiveId: 'assistants',
     conversationRoute: {
       keyFromUrl: (url) => getNormalConversationSearchParamFromUrl(url, CONVERSATION_ROUTES.agent.keyParam),
       urlForKey: (key) => conversationRouteUrl({ conversationType: 'agent', conversationId: key })
@@ -141,7 +153,9 @@ export function tabBelongsToApp(app: SidebarApp, url: string): boolean {
  * 侧边栏支持的完整菜单顺序。
  * Preference 默认值可能不包含新菜单，管理态列表仍需要覆盖当前全部支持项。
  */
-export const SIDEBAR_FAVORITE_ORDER: SidebarAppId[] = SIDEBAR_APPS.map((app) => app.id)
+export const SIDEBAR_FAVORITE_ORDER: SidebarAppId[] = SIDEBAR_APPS.filter((app) => app.sidebarEligible !== false).map(
+  (app) => app.id
+)
 
 /**
  * 必须显示的侧边栏收藏项（不能被隐藏）
@@ -160,9 +174,17 @@ export function getSidebarMenuPath(favorite: SidebarAppId, defaultPaintingProvid
 
 export function resolveSidebarActiveItem(url: string): SidebarAppId | '' {
   const match = SIDEBAR_APPS.find((app) => (app.exactRouteFocus ? url === app.routePrefix : tabBelongsToApp(app, url)))
-  return match?.id ?? ''
+  return match?.sidebarActiveId ?? match?.id ?? ''
 }
 
+/**
+ * Whether `value` names an app that may appear as a sidebar / launchpad entry.
+ *
+ * Deliberately narrower than the `SidebarAppId` union: a `sidebarEligible: false`
+ * app fails here even though it is a valid id elsewhere. That is what makes a
+ * stored favorite for such an app self-heal out of the preference on read.
+ * Route-level lookups must use `getSidebarApp` instead.
+ */
 export function isSidebarAppId(value: string): value is SidebarAppId {
   return sidebarFavoriteSet.has(value as SidebarAppId)
 }

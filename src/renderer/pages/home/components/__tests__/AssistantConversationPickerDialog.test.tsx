@@ -1,4 +1,5 @@
 import type * as CherryStudioUi from '@cherrystudio/ui'
+import { PUBLISHING_ASSISTANT_ID } from '@shared/data/types/publishing'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
@@ -155,6 +156,44 @@ describe('AssistantConversationPickerDialog', () => {
       })
     )
     await waitFor(() => expect(onSelect).toHaveBeenCalledWith({ type: 'assistant', assistantId: 'assistant-new' }))
+  })
+
+  it('offers the publishing assistant as a unified-entry content shortcut', () => {
+    const onSelect = vi.fn()
+    const publishingAssistant = { id: PUBLISHING_ASSISTANT_ID, name: '公众号发布助手' } as any
+
+    render(
+      <AssistantConversationPickerDialog
+        open
+        onOpenChange={vi.fn()}
+        assistants={[publishingAssistant]}
+        onSelect={onSelect}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '公众号发布助手' }))
+
+    expect(onSelect).toHaveBeenCalledWith({ type: 'assistant', assistantId: PUBLISHING_ASSISTANT_ID })
+  })
+
+  it('includes agents in the same conversation entry picker', async () => {
+    const onSelect = vi.fn()
+    const agent = { id: 'agent-1', name: 'Research Agent', configuration: { avatar: '🔎' } } as any
+
+    render(
+      <AssistantConversationPickerDialog
+        open
+        onOpenChange={vi.fn()}
+        assistants={[]}
+        agents={[agent]}
+        onSelect={onSelect}
+      />
+    )
+
+    const agentItem = mocks.pickerProps.items.find((item: { id: string }) => item.id === 'agent:agent-1')
+    await mocks.pickerProps.onSelect(agentItem)
+
+    expect(onSelect).toHaveBeenCalledWith({ type: 'agent', agentId: 'agent-1' })
   })
 
   it('keeps the create dialog open and does not select when assistant creation fails', async () => {

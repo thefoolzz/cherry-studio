@@ -226,6 +226,7 @@ const ChatContentInner: FC<InnerProps> = ({
         hasOlder={hasOlder}
         openCitationsPanel={onOpenCitationsPanel}
         onStartBranchDraft={reserveBranch}
+        onSend={runtime.sendMessage}
       />
     </div>
   )

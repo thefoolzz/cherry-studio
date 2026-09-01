@@ -5,10 +5,12 @@ import {
   getOrderedLaunchpadApps,
   getOrderedVisibleSidebarFavoriteItems,
   getOrderedVisibleSidebarFavorites,
+  getSidebarApp,
   getSidebarFavoriteItems,
   getSidebarMenuPath,
   getSidebarMiniAppFavoriteIds,
   isMessageOnlyConversationUrl,
+  isSidebarAppId,
   removeSidebarEntityFavorite,
   removeSidebarMiniApp,
   reorderLaunchpadApps,
@@ -25,15 +27,54 @@ const miniAppFavorite = (id: string): SidebarFavoriteItem => ({ type: 'mini_app'
 const agentFavorite = (id: string): SidebarFavoriteItem => ({ type: 'agent', id })
 const assistantFavorite = (id: string): SidebarFavoriteItem => ({ type: 'assistant', id })
 
+describe('sidebar-ineligible apps', () => {
+  it('keeps the agents route contract while refusing it as an entry', () => {
+    // Chat is the single conversation entry, but agent sessions still have to be
+    // navigable: notification clicks and deep links resolve through this route, and
+    // dropping it from the registry would silently break that dispatch.
+    expect(isSidebarAppId('agents')).toBe(false)
+    expect(SIDEBAR_FAVORITE_ORDER).not.toContain('agents')
+    expect(getOrderedLaunchpadApps(undefined)).not.toContain('agents')
+
+    const agents = getSidebarApp('agents')
+    expect(agents?.routePrefix).toBe('/app/agents')
+    expect(agents?.conversationRoute?.urlForKey('session-1')).toContain('sessionId=session-1')
+    expect(agents?.conversationRoute?.keyFromUrl('/app/agents?sessionId=session-1')).toBe('session-1')
+  })
+
+  it('drops a stored agents favorite instead of rendering it', () => {
+    // Installs upgraded from a build that shipped agents in the default favorites must
+    // lose the row on read — there is no migration for this preference.
+    expect(getOrderedVisibleSidebarFavorites([appFavorite('translate'), appFavorite('agents')])).toEqual([
+      'assistants',
+      'translate'
+    ])
+    expect(getOrderedVisibleSidebarFavoriteItems([appFavorite('translate'), appFavorite('agents')])).toEqual([
+      appFavorite('assistants'),
+      appFavorite('translate')
+    ])
+  })
+
+  it('keeps the unified chat entry focused while an agent session is open', () => {
+    expect(resolveSidebarActiveItem('/app/agents?sessionId=xyz')).toBe('assistants')
+  })
+})
+
 describe('sidebar config helpers', () => {
   it('keeps the fixed sidebar app order available', () => {
-    expect(SIDEBAR_FAVORITE_ORDER.slice(0, 5)).toEqual(['assistants', 'agents', 'paintings', 'translate', 'mini_app'])
+    expect(SIDEBAR_FAVORITE_ORDER.slice(0, 5)).toEqual([
+      'assistants',
+      'paintings',
+      'translate',
+      'mini_app',
+      'knowledge'
+    ])
   })
 
   it('preserves the preference order when reading ordered visible sidebar favorites', () => {
     expect(
-      getOrderedVisibleSidebarFavorites([appFavorite('translate'), appFavorite('assistants'), appFavorite('agents')])
-    ).toEqual(['translate', 'assistants', 'agents'])
+      getOrderedVisibleSidebarFavorites([appFavorite('translate'), appFavorite('assistants'), appFavorite('knowledge')])
+    ).toEqual(['translate', 'assistants', 'knowledge'])
   })
 
   it('sanitizes ordered visible sidebar favorites and keeps required favorites visible', () => {
@@ -42,9 +83,9 @@ describe('sidebar config helpers', () => {
         appFavorite('translate'),
         { type: 'app', id: 'unknown' } as never,
         appFavorite('translate'),
-        appFavorite('agents')
+        appFavorite('knowledge')
       ])
-    ).toEqual(['assistants', 'translate', 'agents'])
+    ).toEqual(['assistants', 'translate', 'knowledge'])
   })
 
   it('ignores mini app favorites when reading system sidebar favorites', () => {
@@ -53,9 +94,9 @@ describe('sidebar config helpers', () => {
         appFavorite('translate'),
         miniAppFavorite('calculator'),
         appFavorite('assistants'),
-        appFavorite('agents')
+        appFavorite('knowledge')
       ])
-    ).toEqual(['translate', 'assistants', 'agents'])
+    ).toEqual(['translate', 'assistants', 'knowledge'])
   })
 
   it('returns the full mixed list interleaved in stored order with required apps forced in', () => {
@@ -63,13 +104,13 @@ describe('sidebar config helpers', () => {
       getOrderedVisibleSidebarFavoriteItems([
         appFavorite('translate'),
         miniAppFavorite('calculator'),
-        appFavorite('agents')
+        appFavorite('knowledge')
       ])
     ).toEqual([
       appFavorite('assistants'),
       appFavorite('translate'),
       miniAppFavorite('calculator'),
-      appFavorite('agents')
+      appFavorite('knowledge')
     ])
   })
 
@@ -132,7 +173,7 @@ describe('sidebar config helpers', () => {
 
   it('resolves the active item for query-keyed conversation routes', () => {
     expect(resolveSidebarActiveItem('/app/chat?topicId=abc')).toBe('assistants')
-    expect(resolveSidebarActiveItem('/app/agents?sessionId=xyz')).toBe('agents')
+    expect(resolveSidebarActiveItem('/app/agents?sessionId=xyz')).toBe('assistants')
   })
 
   it('does not mark the launchpad sidebar item active for concrete mini app routes', () => {
@@ -323,14 +364,29 @@ describe('launchpad app order (independent from sidebar favorites)', () => {
   })
 
   it('reorders to the requested order and keeps missing apps at the end', () => {
-    const next = reorderLaunchpadApps(['assistants', 'agents', 'files'], ['files', 'assistants', 'agents'])
-    expect(next.slice(0, 3)).toEqual(['files', 'assistants', 'agents'])
+    const next = reorderLaunchpadApps(['assistants', 'knowledge', 'files'], ['files', 'assistants', 'knowledge'])
+    expect(next.slice(0, 3)).toEqual(['files', 'assistants', 'knowledge'])
     expect([...next].sort()).toEqual([...SIDEBAR_FAVORITE_ORDER].sort())
   })
 
   it('drops unknown ids from a requested reorder', () => {
-    const next = reorderLaunchpadApps(['assistants', 'agents'], ['ghost', 'agents', 'assistants'])
-    expect(next.slice(0, 2)).toEqual(['agents', 'assistants'])
+    const next = reorderLaunchpadApps(['assistants', 'knowledge'], ['ghost', 'knowledge', 'assistants'])
+    expect(next.slice(0, 2)).toEqual(['knowledge', 'assistants'])
     expect(next).not.toContain('ghost')
+  })
+
+  it('still offers the apps that no longer ship pinned to the sidebar', () => {
+    // Only chat ships pinned now. These three left the default favorites, not the
+    // product: unpinning by default must stay reversible, so they have to remain
+    // launchpad tiles a user can pin back by hand.
+    const tiles = getOrderedLaunchpadApps(undefined)
+
+    for (const id of ['translate', 'paintings', 'knowledge'] as const) {
+      expect(tiles).toContain(id)
+      expect(setSidebarAppPinned([appFavorite('assistants')], id, true)).toEqual([
+        appFavorite('assistants'),
+        appFavorite(id)
+      ])
+    }
   })
 })

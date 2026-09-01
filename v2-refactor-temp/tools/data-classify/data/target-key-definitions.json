@@ -162,13 +162,7 @@
     {
       "targetKey": "ui.sidebar.favorites",
       "type": "PreferenceTypes.SidebarFavoriteItem[]",
-      "defaultValue": [
-        { "id": "assistants", "type": "app" },
-        { "id": "agents", "type": "app" },
-        { "id": "translate", "type": "app" },
-        { "id": "paintings", "type": "app" },
-        { "id": "knowledge", "type": "app" }
-      ],
+      "defaultValue": [{ "id": "assistants", "type": "app" }],
       "status": "classified",
       "description": "Left sidebar favorites, an ordered list of tagged items: built-in apps ({type:'app'}) and mini apps ({type:'mini_app'})"
     },

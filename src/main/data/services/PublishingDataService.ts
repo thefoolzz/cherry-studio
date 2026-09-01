@@ -1,5 +1,5 @@
 /**
- * DataApi persistence for publishing accounts and draft tasks.
+ * DataApi persistence for publishing accounts, draft tasks, and writing templates.
  *
  * Window/session management and platform network calls belong to the lifecycle
  * publishing service; this service only reads and writes SQLite rows.
@@ -7,26 +7,33 @@
 
 import { application } from '@application'
 import { notifyDataApiDataChange } from '@data/dataApiDataChange'
-import { publishingAccountTable, publishingTaskTable } from '@data/db/schemas/publishing'
+import { publishingAccountTable, publishingTaskTable, publishingTemplateTable } from '@data/db/schemas/publishing'
 import { defaultHandlersFor, withSqliteErrors } from '@data/db/sqliteErrors'
 import { loggerService } from '@logger'
 import { DataApiErrorFactory } from '@shared/data/api/errors'
 import type {
   CreatePublishingAccountDto,
   CreatePublishingTaskDto,
+  CreatePublishingTemplateDto,
   ListPublishingAccountsQuery,
   ListPublishingTasksQuery,
+  ListPublishingTemplatesQuery,
   PublishingAccountListResponse,
   PublishingTaskListResponse,
+  PublishingTemplateListResponse,
   UpdatePublishingAccountDto,
-  UpdatePublishingTaskDto
+  UpdatePublishingTaskDto,
+  UpdatePublishingTemplateDto
 } from '@shared/data/api/schemas/publishing'
 import {
   type PublishingAccount,
   PublishingAccountStatusSchema,
   PublishingPlatformSchema,
   type PublishingTask,
-  PublishingTaskStatusSchema
+  PublishingTaskStatusSchema,
+  type PublishingTemplate,
+  PublishingTemplateBlueprintSchema,
+  PublishingTemplateSourceSchema
 } from '@shared/data/types/publishing'
 import { and, asc, desc, eq, type SQL, sql } from 'drizzle-orm'
 
@@ -61,6 +68,21 @@ function rowToTask(row: typeof publishingTaskTable.$inferSelect): PublishingTask
     remoteDraftId: clean.remoteDraftId,
     editUrl: clean.editUrl,
     error: clean.error,
+    createdAt: timestampToISO(row.createdAt),
+    updatedAt: timestampToISO(row.updatedAt)
+  }
+}
+
+function rowToTemplate(row: typeof publishingTemplateTable.$inferSelect): PublishingTemplate {
+  const clean = nullsToUndefined(row)
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    sourceType: PublishingTemplateSourceSchema.parse(row.sourceType),
+    sourceTitle: clean.sourceTitle,
+    sourceUrl: clean.sourceUrl,
+    blueprint: PublishingTemplateBlueprintSchema.parse(row.blueprint),
     createdAt: timestampToISO(row.createdAt),
     updatedAt: timestampToISO(row.updatedAt)
   }
@@ -233,6 +255,72 @@ export class PublishingDataService {
     if (!row) throw DataApiErrorFactory.notFound('PublishingTask', id)
     notifyDataApiDataChange([{ endpoint: '/publishing-tasks', kind: 'membership', entityIds: [id] }])
     logger.info('Deleted publishing task', { id })
+  }
+
+  listTemplates(query: ListPublishingTemplatesQuery = {}): PublishingTemplateListResponse {
+    const limit = query.limit ?? 50
+    const offset = query.offset ?? 0
+    const rows = this.db
+      .select()
+      .from(publishingTemplateTable)
+      .orderBy(desc(publishingTemplateTable.updatedAt), desc(publishingTemplateTable.id))
+      .limit(limit)
+      .offset(offset)
+      .all()
+    const [{ count }] = this.db.select({ count: sql<number>`count(*)` }).from(publishingTemplateTable).all()
+    return { items: rows.map(rowToTemplate), total: count, page: Math.floor(offset / limit) + 1 }
+  }
+
+  getTemplate(id: string): PublishingTemplate {
+    const [row] = this.db
+      .select()
+      .from(publishingTemplateTable)
+      .where(eq(publishingTemplateTable.id, id))
+      .limit(1)
+      .all()
+    if (!row) throw DataApiErrorFactory.notFound('PublishingTemplate', id)
+    return rowToTemplate(row)
+  }
+
+  createTemplate(dto: CreatePublishingTemplateDto): PublishingTemplate {
+    const [row] = this.db.insert(publishingTemplateTable).values(dto).returning().all()
+    const template = rowToTemplate(row)
+    notifyDataApiDataChange([{ endpoint: '/publishing-templates', kind: 'membership', entityIds: [template.id] }])
+    logger.info('Created publishing template', { id: template.id, sourceType: template.sourceType })
+    return template
+  }
+
+  updateTemplate(id: string, dto: UpdatePublishingTemplateDto): PublishingTemplate {
+    const updates: Partial<typeof publishingTemplateTable.$inferInsert> = {}
+    if (dto.name !== undefined) updates.name = dto.name
+    if (dto.description !== undefined) updates.description = dto.description
+    if (dto.sourceType !== undefined) updates.sourceType = dto.sourceType
+    if (dto.sourceTitle !== undefined) updates.sourceTitle = dto.sourceTitle
+    if (dto.sourceUrl !== undefined) updates.sourceUrl = dto.sourceUrl
+    if (dto.blueprint !== undefined) updates.blueprint = dto.blueprint
+    if (Object.keys(updates).length === 0) return this.getTemplate(id)
+    const [row] = this.db
+      .update(publishingTemplateTable)
+      .set(updates)
+      .where(eq(publishingTemplateTable.id, id))
+      .returning()
+      .all()
+    if (!row) throw DataApiErrorFactory.notFound('PublishingTemplate', id)
+    const template = rowToTemplate(row)
+    notifyDataApiDataChange([{ endpoint: '/publishing-templates', kind: 'projection', entityIds: [id] }])
+    logger.info('Updated publishing template', { id, changes: Object.keys(dto) })
+    return template
+  }
+
+  deleteTemplate(id: string): void {
+    const [row] = this.db
+      .delete(publishingTemplateTable)
+      .where(eq(publishingTemplateTable.id, id))
+      .returning({ id: publishingTemplateTable.id })
+      .all()
+    if (!row) throw DataApiErrorFactory.notFound('PublishingTemplate', id)
+    notifyDataApiDataChange([{ endpoint: '/publishing-templates', kind: 'membership', entityIds: [id] }])
+    logger.info('Deleted publishing template', { id })
   }
 }
 

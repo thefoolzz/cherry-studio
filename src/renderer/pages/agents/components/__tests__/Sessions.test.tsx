@@ -3519,7 +3519,7 @@ describe('Sessions', () => {
     await vi.waitFor(() => expect(preferenceMocks.setPreference).toHaveBeenCalledWith('agent.icon_type', 'model'))
   })
 
-  it('pins an agent to the sidebar from the agent group menu', async () => {
+  it('does not offer pinning an agent to the sidebar from the agent group menu', async () => {
     preferenceMocks.values.set('agent.session.display_mode', 'agent')
     preferenceMocks.values.set('ui.sidebar.favorites', [])
     agentDataMocks.useAgents.mockReturnValue({
@@ -3536,50 +3536,12 @@ describe('Sessions', () => {
 
     const agentGroup = screen.getByRole('button', { name: 'Alpha agent' }).closest('div')
     fireEvent.pointerDown(within(agentGroup as HTMLElement).getByRole('button', { name: 'More' }))
-    const pinMenuItem = screen
-      .getAllByRole('menuitem', { name: 'Add to sidebar' })
-      .find((button) => button.getAttribute('data-slot') === 'dropdown-menu-item')
-    expect(pinMenuItem).toBeDefined()
 
-    fireEvent.click(pinMenuItem as HTMLElement)
-
-    await vi.waitFor(() =>
-      expect(preferenceMocks.setPreference).toHaveBeenCalledWith('ui.sidebar.favorites', [
-        { type: 'app', id: 'assistants' },
-        { type: 'agent', id: 'agent-a' }
-      ])
-    )
-  })
-
-  it('unpins an already pinned agent from the agent group menu', async () => {
-    preferenceMocks.values.set('agent.session.display_mode', 'agent')
-    preferenceMocks.values.set('ui.sidebar.favorites', [{ type: 'agent', id: 'agent-a' }])
-    agentDataMocks.useAgents.mockReturnValue({
-      agents: [{ id: 'agent-a', model: 'model-a', name: 'Alpha agent' }],
-      isLoading: false,
-      error: undefined,
-      refetch: dataApiMocks.refetchAgents
-    })
-    setupSessions({
-      sessions: [createSession({ id: 'session-a', name: 'Alpha session', agentId: 'agent-a', orderKey: 'a' })]
-    })
-
-    render(<SessionsForTest />)
-
-    const agentGroup = screen.getByRole('button', { name: 'Alpha agent' }).closest('div')
-    fireEvent.pointerDown(within(agentGroup as HTMLElement).getByRole('button', { name: 'More' }))
-    const unpinMenuItem = screen
-      .getAllByRole('menuitem', { name: 'Remove from sidebar' })
-      .find((button) => button.getAttribute('data-slot') === 'dropdown-menu-item')
-    expect(unpinMenuItem).toBeDefined()
-
-    fireEvent.click(unpinMenuItem as HTMLElement)
-
-    await vi.waitFor(() =>
-      expect(preferenceMocks.setPreference).toHaveBeenCalledWith('ui.sidebar.favorites', [
-        { type: 'app', id: 'assistants' }
-      ])
-    )
+    // Chat is the single conversation entry, so an agent cannot become a sidebar row.
+    // 'Pin Agent' — the rail's own ordering pin — stays available.
+    await screen.findByRole('menuitem', { name: 'Pin Agent' })
+    expect(screen.queryAllByRole('menuitem', { name: 'Add to sidebar' })).toHaveLength(0)
+    expect(screen.queryAllByRole('menuitem', { name: 'Remove from sidebar' })).toHaveLength(0)
   })
 
   it('deletes an agent from the agent group menu', async () => {

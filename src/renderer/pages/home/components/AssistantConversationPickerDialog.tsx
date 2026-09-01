@@ -1,4 +1,4 @@
-import { MenuItem, MenuList, Popover, PopoverContent, PopoverTrigger } from '@cherrystudio/ui'
+import { Button, MenuItem, MenuList, Popover, PopoverContent, PopoverTrigger } from '@cherrystudio/ui'
 import { loggerService } from '@logger'
 import EmojiIcon from '@renderer/components/EmojiIcon'
 import {
@@ -10,10 +10,13 @@ import { ConversationPickerDialog, type ConversationPickerItem } from '@renderer
 import { useMutation } from '@renderer/data/hooks/useDataApi'
 import { type AssistantCatalogPreset, useAssistantCatalogPresets } from '@renderer/hooks/useAssistantCatalogPresets'
 import type { Assistant } from '@renderer/types/assistant'
+import { getAgentAvatarFromConfiguration } from '@renderer/utils/agent'
 import { buildCreateAssistantDto } from '@renderer/utils/resourceCatalog'
 import { cn } from '@renderer/utils/style'
+import type { AgentEntity } from '@shared/data/api/schemas/agents'
+import { PUBLISHING_ASSISTANT_ID } from '@shared/data/types/publishing'
 import { isNonChatModel } from '@shared/utils/model'
-import { Bot, Check, Filter, Plus } from 'lucide-react'
+import { Bot, Check, FileText, Filter, Plus } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -21,6 +24,7 @@ const logger = loggerService.withContext('AssistantConversationPickerDialog')
 
 export type AssistantConversationSelection =
   | { type: 'assistant'; assistantId: string }
+  | { type: 'agent'; agentId: string }
   | { type: 'catalog'; preset: AssistantCatalogPreset }
 
 type AssistantConversationPickerItem = ConversationPickerItem & {
@@ -32,13 +36,15 @@ const ASSISTANT_CATALOG_PAGE_SIZE = 50
 
 // 资源库 = the user's own assistants; 助手库 = the preset catalog. `null` = neither filter active,
 // showing the combined list (the default view).
-type AssistantPickerTab = 'mine' | 'catalog'
+type AssistantPickerTab = 'mine' | 'agents' | 'catalog'
 
 type AssistantConversationPickerDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   assistants: readonly Assistant[]
   assistantsLoading?: boolean
+  agents?: readonly AgentEntity[]
+  agentsLoading?: boolean
   onSelect: (selection: AssistantConversationSelection) => void | Promise<void>
 }
 
@@ -47,6 +53,8 @@ export function AssistantConversationPickerDialog({
   onOpenChange,
   assistants,
   assistantsLoading = false,
+  agents = [],
+  agentsLoading = false,
   onSelect
 }: AssistantConversationPickerDialogProps) {
   const { t } = useTranslation()
@@ -90,11 +98,42 @@ export function AssistantConversationPickerDialog({
     [presets]
   )
 
+  const agentItems = useMemo<AssistantConversationPickerItem[]>(
+    () =>
+      agents.map((agent) => ({
+        id: `agent:${agent.id}`,
+        name: agent.name,
+        icon: (
+          <EmojiIcon
+            emoji={getAgentAvatarFromConfiguration(agent.configuration) || '🤖'}
+            size={24}
+            fontSize={14}
+            className="mr-0"
+          />
+        ),
+        searchText: agent.description,
+        selection: { type: 'agent' as const, agentId: agent.id }
+      })),
+    [agents]
+  )
+
+  const publishingAssistant = useMemo(
+    () => assistants.find((assistant) => assistant.id === PUBLISHING_ASSISTANT_ID),
+    [assistants]
+  )
+
   // Memoized so the reference only changes on a real tab/data change (the picker resets its paged
   // window whenever `items` changes). No tab selected → the combined 资源库 + 助手库 list.
   const items = useMemo(
-    () => (activeTab === 'catalog' ? catalogItems : activeTab === 'mine' ? myItems : [...myItems, ...catalogItems]),
-    [activeTab, catalogItems, myItems]
+    () =>
+      activeTab === 'catalog'
+        ? catalogItems
+        : activeTab === 'mine'
+          ? myItems
+          : activeTab === 'agents'
+            ? agentItems
+            : [...myItems, ...agentItems, ...catalogItems],
+    [activeTab, agentItems, catalogItems, myItems]
   )
 
   // The picker closes itself before the caller runs its async work (avoids a refetch flash while the
@@ -134,41 +173,63 @@ export function AssistantConversationPickerDialog({
   const filterOptions: { value: AssistantPickerTab | null; label: string }[] = [
     { value: null, label: t('common.all') },
     { value: 'mine', label: t('library.title') },
+    { value: 'agents', label: t('agent.sidebar_title') },
     { value: 'catalog', label: t('assistants.presets.title') }
   ]
   const toolbar = (
-    <Popover open={filterOpen} onOpenChange={setFilterOpen}>
-      <PopoverTrigger asChild>
-        <button
+    <div className="flex items-center gap-1">
+      {publishingAssistant ? (
+        <Button
           type="button"
-          aria-label={t('selector.assistant.filter')}
-          className="group flex size-7 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-accent">
-          <Filter
-            size={15}
-            className={cn(
-              'shrink-0',
-              activeTab ? 'text-primary!' : 'text-muted-foreground group-hover:text-foreground'
-            )}
-          />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-fit min-w-32 rounded-xl p-1.5">
-        <MenuList className="gap-1">
-          {filterOptions.map((option) => (
-            <MenuItem
-              key={option.value ?? 'all'}
-              label={option.label}
-              className="h-8 rounded-lg px-2.5 text-sm"
-              icon={<Check className={cn('size-3.5', activeTab === option.value ? 'opacity-100' : 'opacity-0')} />}
-              onClick={() => {
-                setActiveTab(option.value)
-                setFilterOpen(false)
-              }}
+          variant="ghost"
+          size="sm"
+          aria-label={publishingAssistant.name}
+          className="h-7 max-w-36 gap-1.5 px-2 text-xs"
+          onClick={() =>
+            handleSelect({
+              id: `assistant:${publishingAssistant.id}`,
+              name: publishingAssistant.name,
+              icon: <FileText className="size-4" />,
+              selection: { type: 'assistant', assistantId: publishingAssistant.id }
+            })
+          }>
+          <FileText className="size-3.5 shrink-0" />
+          <span className="truncate">{publishingAssistant.name}</span>
+        </Button>
+      ) : null}
+      <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label={t('selector.assistant.filter')}
+            className="group flex size-7 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-accent">
+            <Filter
+              size={15}
+              className={cn(
+                'shrink-0',
+                activeTab ? 'text-primary!' : 'text-muted-foreground group-hover:text-foreground'
+              )}
             />
-          ))}
-        </MenuList>
-      </PopoverContent>
-    </Popover>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-fit min-w-32 rounded-xl p-1.5">
+          <MenuList className="gap-1">
+            {filterOptions.map((option) => (
+              <MenuItem
+                key={option.value ?? 'all'}
+                label={option.label}
+                className="h-8 rounded-lg px-2.5 text-sm"
+                icon={<Check className={cn('size-3.5', activeTab === option.value ? 'opacity-100' : 'opacity-0')} />}
+                onClick={() => {
+                  setActiveTab(option.value)
+                  setFilterOpen(false)
+                }}
+              />
+            ))}
+          </MenuList>
+        </PopoverContent>
+      </Popover>
+    </div>
   )
 
   return (
@@ -178,9 +239,9 @@ export function AssistantConversationPickerDialog({
         onOpenChange={onOpenChange}
         items={items}
         labels={{
-          title: t('chat.add.assistant.title'),
+          title: t('chat.conversation.new'),
           description: t('chat.add.assistant.description'),
-          searchPlaceholder: t('selector.assistant.search_placeholder'),
+          searchPlaceholder: t('chat.assistant.search.placeholder'),
           emptyText: t('selector.assistant.empty_text'),
           loadingText: t('common.loading')
         }}
@@ -216,7 +277,9 @@ export function AssistantConversationPickerDialog({
             ? catalogLoading
             : activeTab === 'mine'
               ? assistantsLoading
-              : assistantsLoading || catalogLoading
+              : activeTab === 'agents'
+                ? agentsLoading
+                : assistantsLoading || agentsLoading || catalogLoading
         }
         showCloseButton={false}
         onSelect={handleSelect}

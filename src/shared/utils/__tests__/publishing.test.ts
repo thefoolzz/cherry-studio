@@ -50,4 +50,22 @@ describe('parsePublishingContentDraft', () => {
 
     expect(draft.pendingFacts).toEqual(['时间', '地点', '价格', '联系方式'])
   })
+
+  it('drops assistant planning text before the article title', () => {
+    const draft = parsePublishingContentDraft(`
+我先分析目标读者，再生成配图和正文。
+
+正在整理文章结构。
+
+# 海南自驾租赁指南
+
+这是平台应该收到的正式正文。
+`)
+
+    expect(draft).toEqual({
+      title: '海南自驾租赁指南',
+      markdown: '这是平台应该收到的正式正文。',
+      pendingFacts: []
+    })
+  })
 })

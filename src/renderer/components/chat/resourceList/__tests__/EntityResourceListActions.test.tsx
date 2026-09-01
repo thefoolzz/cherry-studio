@@ -1016,7 +1016,7 @@ describe('classic layout entity resource list actions', () => {
     expect(screen.queryByText('agent.session.group.collapse_all')).not.toBeInTheDocument()
   })
 
-  it('offers toggling an agent into the sidebar from the classic rail context menu', () => {
+  it('does not offer pinning an agent to the sidebar from the classic rail context menu', () => {
     render(
       <AgentResourceList
         activeAgentId="agent-1"
@@ -1027,39 +1027,11 @@ describe('classic layout entity resource list actions', () => {
       />
     )
 
+    // Chat is the single conversation entry, so an agent must not be pinnable into the
+    // sidebar; the rail's own pin action (`agent.pin.title`) is unaffected.
     const menu = screen.getByTestId('agent-1-context-menu')
-    expect(menu).toHaveTextContent('launchpad.pin_to_sidebar')
+    expect(menu).not.toHaveTextContent('launchpad.pin_to_sidebar')
     expect(menu).not.toHaveTextContent('launchpad.unpin_from_sidebar')
-
-    fireEvent.click(within(menu).getByRole('button', { name: 'launchpad.pin_to_sidebar' }))
-
-    expect(preferenceMocks.setPreference).toHaveBeenCalledWith('ui.sidebar.favorites', [
-      { type: 'app', id: 'assistants' },
-      { type: 'agent', id: 'agent-1' }
-    ])
-  })
-
-  it('toggles an already-pinned agent out of the sidebar from the classic rail context menu', () => {
-    preferenceMocks.values.set('ui.sidebar.favorites', [{ type: 'agent', id: 'agent-1' }])
-
-    render(
-      <AgentResourceList
-        activeAgentId="agent-1"
-        agentSessionsSource={createAgentSessionsSource()}
-        onSelectSession={vi.fn()}
-        onCreateSession={vi.fn()}
-        onShowMissingAgentSelection={vi.fn()}
-      />
-    )
-
-    const menu = screen.getByTestId('agent-1-context-menu')
-    expect(menu).toHaveTextContent('launchpad.unpin_from_sidebar')
-
-    fireEvent.click(within(menu).getByRole('button', { name: 'launchpad.unpin_from_sidebar' }))
-
-    expect(preferenceMocks.setPreference).toHaveBeenCalledWith('ui.sidebar.favorites', [
-      { type: 'app', id: 'assistants' }
-    ])
   })
 
   it('offers toggling an assistant into the sidebar from the classic rail context menu', () => {

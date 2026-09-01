@@ -41,6 +41,20 @@ describe('WechatPublisher.renderMarkdown', () => {
     expect(html).not.toContain('活动日期')
     expect(html).toContain('font-size:16px')
   })
+
+  it('removes assistant planning text before the article from the platform body', () => {
+    const html = new WechatPublisher().renderMarkdown(`
+我会先分析读者，再生成配图和正文。
+
+# 海南自驾租赁指南
+
+这是平台应该收到的正式正文。
+`)
+
+    expect(html).not.toContain('我会先分析读者')
+    expect(html).not.toContain('海南自驾租赁指南')
+    expect(html).toContain('这是平台应该收到的正式正文')
+  })
 })
 
 describe('WechatPublisher.createDraft', () => {

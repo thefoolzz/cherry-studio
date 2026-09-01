@@ -12,7 +12,6 @@ import { useAgents } from '@renderer/hooks/agent/useAgent'
 import type { AgentSessionsSource } from '@renderer/hooks/resourceViewSources'
 import { useCloseConversationTabs } from '@renderer/hooks/tab'
 import { usePins } from '@renderer/hooks/usePins'
-import { useSidebarFavorites } from '@renderer/hooks/useSidebarFavorites'
 import { ipcApi } from '@renderer/ipc'
 import { popup } from '@renderer/services/popup'
 import { toast } from '@renderer/services/toast'
@@ -40,7 +39,6 @@ const AGENT_ENTITY_EDIT_ACTION_ID = 'agent-entity.edit'
 const AGENT_ENTITY_TOGGLE_PIN_ACTION_ID = 'agent-entity.toggle-pin'
 const AGENT_ENTITY_ICON_TYPE_ACTION_ID = 'agent-entity.icon-type'
 const AGENT_ENTITY_DELETE_ACTION_ID = 'agent-entity.delete'
-const AGENT_ENTITY_TOGGLE_SIDEBAR_ACTION_ID = 'agent-entity.toggle-sidebar'
 
 type SessionListItem = AgentSessionEntity & {
   pinned?: boolean
@@ -114,8 +112,6 @@ export function AgentResourceList({
   const [editDialogTarget, setEditDialogTarget] = useState<ResourceEditDialogTarget | null>(null)
   const agentPinnedIdSet = useMemo(() => new Set(agentPinnedIds), [agentPinnedIds])
   const isAgentPinActionDisabled = isAgentPinsLoading || isAgentPinsRefreshing || isAgentPinsMutating
-  const { agentFavoriteIds: sidebarAgentFavoriteIds, toggleAgent, removeAgent } = useSidebarFavorites()
-  const sidebarAgentFavoriteIdSet = useMemo(() => new Set(sidebarAgentFavoriteIds), [sidebarAgentFavoriteIds])
   const sessionItems = useMemo<SessionListItem[]>(
     () => sessions.map((session) => ({ ...session, pinned: pinIdBySessionId.has(session.id) })),
     [pinIdBySessionId, sessions]
@@ -301,7 +297,6 @@ export function AgentResourceList({
   const getContextMenuActions = useCallback(
     (item: ResourceEntityRailItem): ResolvedAction[] => {
       const pinned = agentPinnedIdSet.has(item.id)
-      const sidebarPinned = sidebarAgentFavoriteIdSet.has(item.id)
       const deleteTasksOnly = isProtectedBuiltinAgentRole(
         agents.find((agent) => agent.id === item.id)?.configuration?.builtin_role
       )
@@ -319,12 +314,6 @@ export function AgentResourceList({
           icon: pinned ? <PinOff size={14} /> : <Pin size={14} />,
           order: 20,
           availability: { visible: true, enabled: !isAgentPinActionDisabled }
-        }),
-        buildResolvedResourceEntityMenuAction({
-          id: AGENT_ENTITY_TOGGLE_SIDEBAR_ACTION_ID,
-          label: sidebarPinned ? t('launchpad.unpin_from_sidebar') : t('launchpad.pin_to_sidebar'),
-          icon: sidebarPinned ? <PinOff size={14} /> : <Pin size={14} />,
-          order: 22
         }),
         buildResolvedIconTypeMenuAction(
           AGENT_ENTITY_ICON_TYPE_ACTION_ID,
@@ -345,15 +334,7 @@ export function AgentResourceList({
         })
       ]
     },
-    [
-      agentPinnedIdSet,
-      agents,
-      assistantIconType,
-      deletingAgentId,
-      isAgentPinActionDisabled,
-      sidebarAgentFavoriteIdSet,
-      t
-    ]
+    [agentPinnedIdSet, agents, assistantIconType, deletingAgentId, isAgentPinActionDisabled, t]
   )
 
   const handleContextMenuAction = useCallback(
@@ -366,11 +347,6 @@ export function AgentResourceList({
         void handleToggleAgentPin(item.id)
         return
       }
-      if (action.id === AGENT_ENTITY_TOGGLE_SIDEBAR_ACTION_ID) {
-        if (sidebarAgentFavoriteIdSet.has(item.id)) removeAgent(item.id)
-        else toggleAgent(item.id)
-        return
-      }
       if (action.id.startsWith(`${AGENT_ENTITY_ICON_TYPE_ACTION_ID}.`)) {
         void setAssistantIconType(action.id.slice(AGENT_ENTITY_ICON_TYPE_ACTION_ID.length + 1) as AssistantIconType)
         return
@@ -379,15 +355,7 @@ export function AgentResourceList({
         void handleDeleteAgent(item.id)
       }
     },
-    [
-      handleDeleteAgent,
-      handleToggleAgentPin,
-      openAgentEditor,
-      removeAgent,
-      setAssistantIconType,
-      sidebarAgentFavoriteIdSet,
-      toggleAgent
-    ]
+    [handleDeleteAgent, handleToggleAgentPin, openAgentEditor, setAssistantIconType]
   )
 
   return (

@@ -1,4 +1,4 @@
-/** Data API contracts for persisted publishing accounts and draft tasks. */
+/** Data API contracts for persisted publishing accounts, draft tasks, and writing templates. */
 
 import * as z from 'zod'
 
@@ -8,7 +8,10 @@ import {
   PublishingAccountStatusSchema,
   PublishingPlatformSchema,
   type PublishingTask,
-  PublishingTaskStatusSchema
+  PublishingTaskStatusSchema,
+  type PublishingTemplate,
+  PublishingTemplateBlueprintSchema,
+  PublishingTemplateSourceSchema
 } from '../../types/publishing'
 import type { OffsetPaginationResponse } from '../types'
 
@@ -69,12 +72,44 @@ export const ListPublishingTasksQuerySchema = z.strictObject({
 })
 export type ListPublishingTasksQuery = z.infer<typeof ListPublishingTasksQuerySchema>
 
+export const CreatePublishingTemplateSchema = z.strictObject({
+  name: z.string().trim().min(1).max(200),
+  description: z.string().trim().min(1).max(1000),
+  sourceType: PublishingTemplateSourceSchema,
+  sourceTitle: z.string().trim().min(1).max(500).optional(),
+  sourceUrl: z.string().url().optional(),
+  blueprint: PublishingTemplateBlueprintSchema
+})
+export type CreatePublishingTemplateDto = z.infer<typeof CreatePublishingTemplateSchema>
+
+export const UpdatePublishingTemplateSchema = z
+  .strictObject({
+    name: z.string().trim().min(1).max(200).optional(),
+    description: z.string().trim().min(1).max(1000).optional(),
+    sourceType: PublishingTemplateSourceSchema.optional(),
+    sourceTitle: z.string().trim().min(1).max(500).nullable().optional(),
+    sourceUrl: z.string().url().nullable().optional(),
+    blueprint: PublishingTemplateBlueprintSchema.optional()
+  })
+  .refine((value) => Object.keys(value).length > 0, { message: 'at least one template field is required' })
+export type UpdatePublishingTemplateDto = z.infer<typeof UpdatePublishingTemplateSchema>
+
+export const ListPublishingTemplatesQuerySchema = z.strictObject({
+  limit: z.coerce.number().int().positive().max(PUBLISHING_LIST_MAX_LIMIT).optional(),
+  offset: z.coerce.number().int().nonnegative().optional()
+})
+export type ListPublishingTemplatesQuery = z.infer<typeof ListPublishingTemplatesQuerySchema>
+
 export interface PublishingAccountListResponse extends OffsetPaginationResponse<PublishingAccount> {
   items: PublishingAccount[]
 }
 
 export interface PublishingTaskListResponse extends OffsetPaginationResponse<PublishingTask> {
   items: PublishingTask[]
+}
+
+export interface PublishingTemplateListResponse extends OffsetPaginationResponse<PublishingTemplate> {
+  items: PublishingTemplate[]
 }
 
 export type PublishingSchemas = {
@@ -122,6 +157,31 @@ export type PublishingSchemas = {
       params: { id: string }
       body: UpdatePublishingTaskDto
       response: PublishingTask
+    }
+    DELETE: {
+      params: { id: string }
+      response: void
+    }
+  }
+  '/publishing-templates': {
+    GET: {
+      query?: ListPublishingTemplatesQuery
+      response: PublishingTemplateListResponse
+    }
+    POST: {
+      body: CreatePublishingTemplateDto
+      response: PublishingTemplate
+    }
+  }
+  '/publishing-templates/:id': {
+    GET: {
+      params: { id: string }
+      response: PublishingTemplate
+    }
+    PATCH: {
+      params: { id: string }
+      body: UpdatePublishingTemplateDto
+      response: PublishingTemplate
     }
     DELETE: {
       params: { id: string }

@@ -54,6 +54,7 @@ const useMessageErrorActionsMock = vi.hoisted(() => vi.fn<(options?: unknown) =>
 const openRouteMock = vi.hoisted(() => vi.fn())
 const getComposerTextFromPartsMock = vi.hoisted(() => vi.fn<(parts?: CherryMessagePart[]) => string>(() => ''))
 const publishingDraftActionMock = vi.hoisted(() => vi.fn())
+const sendMessageMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@data/DataApiService', () => ({
   dataApiService: {
@@ -223,6 +224,7 @@ vi.mock('../PublishingDraftAction', () => ({
   PublishingDraftAction: (props: {
     imageFileIds: string[]
     markdown: string
+    onCreateTemplate: () => Promise<void>
     onSaveDraft: (draft: { title: string; markdown: string }) => Promise<void>
   }) => {
     publishingDraftActionMock(props)
@@ -235,6 +237,9 @@ vi.mock('../PublishingDraftAction', () => ({
           type="button"
           onClick={() => void props.onSaveDraft({ title: 'Edited title', markdown: 'Edited body' })}>
           Save edited article
+        </button>
+        <button type="button" onClick={() => void props.onCreateTemplate()}>
+          Save template
         </button>
       </div>
     )
@@ -290,6 +295,7 @@ function MessageListAdapterHarness({
   streamingLayers,
   messages = [],
   onBindRuntime,
+  onSend,
   onStartBranchDraft,
   onValue,
   partsByMessageId = {},
@@ -300,6 +306,7 @@ function MessageListAdapterHarness({
   streamingLayers?: MessageListProviderValue['state']['streamingLayers']
   messages?: CherryUIMessage[]
   onBindRuntime?: MessageListProviderValue['actions']['bindRuntime']
+  onSend?: (text: string) => Promise<unknown>
   onStartBranchDraft?: MessageListProviderValue['actions']['startMessageBranch']
   onValue?: (value: MessageListProviderValue) => void
   partsByMessageId?: Record<string, CherryMessagePart[]>
@@ -314,6 +321,7 @@ function MessageListAdapterHarness({
     streamingLayers,
     imageActionConsumer,
     onBindRuntime,
+    onSend,
     onStartBranchDraft
   })
 
@@ -334,6 +342,7 @@ describe('useHomeMessageListProviderValue topic image actions', () => {
     getComposerTextFromPartsMock.mockReset()
     getComposerTextFromPartsMock.mockReturnValue('')
     publishingDraftActionMock.mockClear()
+    sendMessageMock.mockReset().mockResolvedValue(undefined)
     clearPendingTopicImageActionsForTest()
     Object.defineProperty(window, 'api', {
       configurable: true,
@@ -436,6 +445,65 @@ describe('useHomeMessageListProviderValue topic image actions', () => {
     )
   })
 
+  it('embeds generated images into the article and hides their separate tool cards', () => {
+    getComposerTextFromPartsMock.mockImplementation((parts?: CherryMessagePart[]) =>
+      (parts ?? []).flatMap((part) => (part.type === 'text' ? [part.text] : [])).join('')
+    )
+    const topic = { ...createTopic('topic-a'), assistantId: PUBLISHING_ASSISTANT_ID }
+    const messages = [
+      { id: 'user-1', topicId: topic.id, role: 'user', status: 'success' },
+      { id: 'assistant-article', topicId: topic.id, role: 'assistant', status: 'success' }
+    ] as unknown as CherryUIMessage[]
+    const imagePart = (id: string) =>
+      ({
+        type: 'dynamic-tool',
+        toolCallId: `image-${id}`,
+        toolName: 'generate_image',
+        state: 'output-available',
+        output: {
+          content: [{ id, name: `${id}.png` }],
+          metadata: { type: 'builtin' }
+        }
+      }) as unknown as CherryMessagePart
+    const partsByMessageId = {
+      'assistant-article': [
+        { type: 'text', text: '我先说明会如何处理这篇文章。' } as CherryMessagePart,
+        imagePart('cover-file-id'),
+        imagePart('body-file-id'),
+        { type: 'text', text: '# 完整文章\n\n第一段\n\n第二段\n\n第三段' } as CherryMessagePart
+      ]
+    }
+    const streamingLayers = { historyPartsByMessageId: partsByMessageId, liveMessageIds: [] }
+    let value: MessageListProviderValue | undefined
+
+    render(
+      <MessageListAdapterHarness
+        topic={topic}
+        assistantId={PUBLISHING_ASSISTANT_ID}
+        messages={messages}
+        partsByMessageId={partsByMessageId}
+        streamingLayers={streamingLayers}
+        onValue={(nextValue) => (value = nextValue)}
+      />
+    )
+    render(<>{value?.state.messageTails?.map((tail) => tail.content)}</>)
+
+    const displayParts = value?.state.partsByMessageId['assistant-article'] ?? []
+    const historyDisplayParts = value?.state.streamingLayers?.historyPartsByMessageId['assistant-article'] ?? []
+    expect(displayParts).toHaveLength(1)
+    expect(historyDisplayParts).toHaveLength(1)
+    expect((displayParts[0] as { text: string }).text).not.toContain('我先说明')
+    expect(displayParts[0]).toMatchObject({
+      type: 'text',
+      text: expect.stringContaining('# 完整文章\n\n![封面图](attachment://cover-file-id)')
+    })
+    expect((displayParts[0] as { text: string }).text).toContain('![正文配图 1](attachment://body-file-id)')
+    expect(screen.getByTestId('publishing-draft-action')).toHaveAttribute(
+      'data-markdown',
+      (displayParts[0] as { text: string }).text
+    )
+  })
+
   it('adds an independent publishing action after every completed article turn', () => {
     getComposerTextFromPartsMock.mockImplementation((parts?: CherryMessagePart[]) =>
       (parts ?? []).flatMap((part) => (part.type === 'text' ? [part.text] : [])).join('')
@@ -472,6 +540,32 @@ describe('useHomeMessageListProviderValue topic image actions', () => {
       '# First article\n\nFirst body',
       '# Second article\n\nSecond body'
     ])
+  })
+
+  it('does not offer article actions for a template confirmation message', () => {
+    getComposerTextFromPartsMock.mockImplementation((parts?: CherryMessagePart[]) =>
+      (parts ?? []).flatMap((part) => (part.type === 'text' ? [part.text] : [])).join('')
+    )
+    const topic = { ...createTopic('topic-a'), assistantId: PUBLISHING_ASSISTANT_ID }
+    const messages = [
+      { id: 'user-1', topicId: topic.id, role: 'user', status: 'success' },
+      { id: 'assistant-template', topicId: topic.id, role: 'assistant', status: 'success' }
+    ] as unknown as CherryUIMessage[]
+    let value: MessageListProviderValue | undefined
+
+    render(
+      <MessageListAdapterHarness
+        topic={topic}
+        assistantId={PUBLISHING_ASSISTANT_ID}
+        messages={messages}
+        partsByMessageId={{
+          'assistant-template': [{ type: 'text', text: '模板已直接保存。\n\n模板名称：租赁决策型软文' }]
+        }}
+        onValue={(nextValue) => (value = nextValue)}
+      />
+    )
+
+    expect(value?.state.messageTails).toBeUndefined()
   })
 
   it('persists article edits back to the source assistant message', async () => {
@@ -518,6 +612,37 @@ describe('useHomeMessageListProviderValue topic image actions', () => {
       { type: 'text', text: '# Edited title\n\nEdited body' },
       citation
     ])
+  })
+
+  it('sends the selected generated article to the template extraction flow', async () => {
+    const user = userEvent.setup()
+    getComposerTextFromPartsMock.mockImplementation((parts?: CherryMessagePart[]) =>
+      (parts ?? []).flatMap((part) => (part.type === 'text' ? [part.text] : [])).join('')
+    )
+    const topic = { ...createTopic('topic-a'), assistantId: PUBLISHING_ASSISTANT_ID }
+    const markdown = '# Distinct article\n\nA flexible article body.'
+    const messages = [
+      { id: 'user-1', topicId: topic.id, role: 'user', status: 'success' },
+      { id: 'assistant-article', topicId: topic.id, role: 'assistant', status: 'success' }
+    ] as unknown as CherryUIMessage[]
+    let value: MessageListProviderValue | undefined
+
+    render(
+      <MessageListAdapterHarness
+        topic={topic}
+        assistantId={PUBLISHING_ASSISTANT_ID}
+        messages={messages}
+        partsByMessageId={{ 'assistant-article': [{ type: 'text', text: markdown } as CherryMessagePart] }}
+        onSend={sendMessageMock}
+        onValue={(nextValue) => (value = nextValue)}
+      />
+    )
+    render(<>{value?.state.messageTails?.[0]?.content}</>)
+
+    await user.click(screen.getByRole('button', { name: 'Save template' }))
+
+    expect(sendMessageMock).toHaveBeenCalledWith(expect.stringContaining(markdown))
+    expect(sendMessageMock).toHaveBeenCalledWith(expect.stringContaining('不要把文章中的事实'))
   })
 
   it('injects Home-message diagnosis persistence into the shared error UI', async () => {

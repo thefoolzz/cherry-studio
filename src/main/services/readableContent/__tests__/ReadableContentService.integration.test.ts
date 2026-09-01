@@ -5,7 +5,10 @@ vi.mock('../readableContentWorker?nodeWorker', async () => {
 
   return {
     default: (options: ConstructorParameters<typeof Worker>[1]) =>
-      new Worker(`${process.cwd()}/src/main/services/readableContent/readableContentWorker.ts`, options)
+      new Worker(`${process.cwd()}/src/main/services/readableContent/readableContentWorker.ts`, {
+        ...options,
+        execArgv: [...(options?.execArgv ?? process.execArgv), '--require', 'tsx/cjs']
+      })
   }
 })
 

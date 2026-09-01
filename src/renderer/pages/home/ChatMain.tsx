@@ -21,6 +21,7 @@ interface ChatMainProps {
   hasOlder: boolean
   openCitationsPanel?: MessageListActions['openCitationsPanel']
   onStartBranchDraft?: MessageListActions['startMessageBranch']
+  onSend: (text: string) => Promise<unknown>
 }
 
 const ChatMain: FC<ChatMainProps> = ({
@@ -35,7 +36,8 @@ const ChatMain: FC<ChatMainProps> = ({
   loadOlder,
   hasOlder,
   openCitationsPanel,
-  onStartBranchDraft
+  onStartBranchDraft,
+  onSend
 }) => {
   const value = useHomeMessageListProviderValue({
     topic,
@@ -49,7 +51,8 @@ const ChatMain: FC<ChatMainProps> = ({
     loadOlder,
     hasOlder,
     openCitationsPanel,
-    onStartBranchDraft
+    onStartBranchDraft,
+    onSend
   })
   return (
     <MessageListProvider value={value}>

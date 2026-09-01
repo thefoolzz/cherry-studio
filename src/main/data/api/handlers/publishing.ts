@@ -4,11 +4,14 @@ import { publishingDataService } from '@data/services/PublishingDataService'
 import {
   CreatePublishingAccountSchema,
   CreatePublishingTaskSchema,
+  CreatePublishingTemplateSchema,
   ListPublishingAccountsQuerySchema,
   ListPublishingTasksQuerySchema,
+  ListPublishingTemplatesQuerySchema,
   type PublishingSchemas,
   UpdatePublishingAccountSchema,
-  UpdatePublishingTaskSchema
+  UpdatePublishingTaskSchema,
+  UpdatePublishingTemplateSchema
 } from '@shared/data/api/schemas/publishing'
 import type { HandlersFor } from '@shared/data/api/types'
 
@@ -36,6 +39,20 @@ export const publishingHandlers: HandlersFor<PublishingSchemas> = {
       publishingDataService.updateTask(params.id, UpdatePublishingTaskSchema.parse(body)),
     DELETE: async ({ params }) => {
       publishingDataService.deleteTask(params.id)
+      return undefined
+    }
+  },
+  '/publishing-templates': {
+    GET: async ({ query }) =>
+      publishingDataService.listTemplates(ListPublishingTemplatesQuerySchema.parse(query ?? {})),
+    POST: async ({ body }) => publishingDataService.createTemplate(CreatePublishingTemplateSchema.parse(body))
+  },
+  '/publishing-templates/:id': {
+    GET: async ({ params }) => publishingDataService.getTemplate(params.id),
+    PATCH: async ({ params, body }) =>
+      publishingDataService.updateTemplate(params.id, UpdatePublishingTemplateSchema.parse(body)),
+    DELETE: async ({ params }) => {
+      publishingDataService.deleteTemplate(params.id)
       return undefined
     }
   }

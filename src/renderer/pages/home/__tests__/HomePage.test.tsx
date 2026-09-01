@@ -202,6 +202,10 @@ vi.mock('@renderer/hooks/tab', () => ({
   useTabSelfVisuals: vi.fn()
 }))
 
+vi.mock('@renderer/hooks/agent/useAgent', () => ({
+  useAgents: () => ({ agents: [{ id: 'agent-1', name: 'Agent One' }], isLoading: false })
+}))
+
 vi.mock('@renderer/hooks/useAssistant', () => ({
   useAssistants: () => ({
     assistants: homeMocks.assistants,
@@ -652,6 +656,9 @@ vi.mock('../components/AssistantConversationPickerDialog', () => ({
       <div data-testid="assistant-conversation-picker">
         <button type="button" onClick={() => onSelect?.({ type: 'assistant', assistantId: 'assistant-2' })}>
           Select my assistant
+        </button>
+        <button type="button" onClick={() => onSelect?.({ type: 'agent', agentId: 'agent-1' })}>
+          Select agent
         </button>
         <button
           type="button"
@@ -1331,6 +1338,24 @@ describe('HomePage', () => {
     expect(homeMocks.addAssistant).not.toHaveBeenCalled()
     expect(screen.getByTestId('active-topic')).toHaveTextContent('topic-created')
     expect(screen.getByTestId('active-topic-assistant')).toHaveTextContent('assistant-2')
+  })
+
+  it('opens an agent from the same conversation entry picker', async () => {
+    homeMocks.preferenceValues.set('topic.tab.display_mode', 'assistant')
+
+    render(<HomePage />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open assistant picker' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Select agent' }))
+
+    await waitFor(() =>
+      expect(homeMocks.navigate).toHaveBeenCalledWith({
+        to: '/app/agents',
+        search: { agentId: 'agent-1' },
+        replace: true
+      })
+    )
+    expect(homeMocks.createTopic).not.toHaveBeenCalled()
   })
 
   it('adds a catalog assistant before creating an empty topic from the classic-layout picker', async () => {

@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   blobToDataUrl: vi.fn(),
+  createTemplate: vi.fn(),
   getImageBlobFromSource: vi.fn(),
   request: vi.fn(),
   saveDraft: vi.fn(),
@@ -61,6 +62,7 @@ vi.mock('react-i18next', () => {
     'chat.publishing.editor.placeholder': 'Write the article content...',
     'chat.publishing.editor.title': 'Edit article',
     'chat.publishing.hint': 'Choose an account before sending',
+    'chat.publishing.save_template': 'Save as template',
     'chat.publishing.success': 'Draft created',
     'common.cancel': 'Cancel',
     'common.edit': 'Edit',
@@ -97,6 +99,7 @@ describe('PublishingDraftAction', () => {
       mutate: vi.fn()
     })
     mocks.getImageBlobFromSource.mockReset().mockResolvedValue(new Blob(['image'], { type: 'image/png' }))
+    mocks.createTemplate.mockReset().mockResolvedValue(undefined)
     mocks.blobToDataUrl.mockReset().mockResolvedValue('data:image/png;base64,cHJldmlldw==')
     mocks.toSafeFileUrl.mockReset().mockImplementation((path: string) => `file://${path}`)
     mocks.saveDraft.mockReset().mockResolvedValue(undefined)
@@ -114,6 +117,7 @@ describe('PublishingDraftAction', () => {
         markdown={'# Original title\n\nOriginal body is long enough to publish as an article.'}
         topicName="Fallback topic"
         imageFileIds={['image-1']}
+        onCreateTemplate={mocks.createTemplate}
         onSaveDraft={mocks.saveDraft}
       />
     )
@@ -155,6 +159,7 @@ describe('PublishingDraftAction', () => {
         markdown={'# Illustrated article\n\nBefore image.\n\n![Preview](attachment://image-1)\n\nAfter image.'}
         topicName="Fallback topic"
         imageFileIds={['image-1']}
+        onCreateTemplate={mocks.createTemplate}
         onSaveDraft={mocks.saveDraft}
       />
     )
@@ -180,6 +185,32 @@ describe('PublishingDraftAction', () => {
     })
   })
 
+  it('never sends assistant planning text before the article title to the platform draft', async () => {
+    const user = userEvent.setup()
+    render(
+      <PublishingDraftAction
+        markdown={
+          '我先分析目标读者，再生成配图和正文。\n\n# 海南自驾租赁指南\n\n这是平台应该收到的正式正文，包含完整信息且长度足以创建公众号草稿。'
+        }
+        topicName="Fallback topic"
+        onCreateTemplate={mocks.createTemplate}
+        onSaveDraft={mocks.saveDraft}
+      />
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Confirm publishing' }))
+    expect(screen.getByLabelText('Article title')).toHaveValue('海南自驾租赁指南')
+    await user.click(screen.getByRole('button', { name: 'Create draft' }))
+
+    await waitFor(() => {
+      expect(mocks.request).toHaveBeenCalledWith('publishing.prepare_draft', {
+        accountId: account.id,
+        title: '海南自驾租赁指南',
+        markdown: '这是平台应该收到的正式正文，包含完整信息且长度足以创建公众号草稿。'
+      })
+    })
+  })
+
   it('keeps article editor drafts isolated between generated articles', async () => {
     const user = userEvent.setup()
     render(
@@ -188,6 +219,7 @@ describe('PublishingDraftAction', () => {
           <PublishingDraftAction
             markdown={'# First title\n\nThe first article has enough original body content.'}
             topicName="First topic"
+            onCreateTemplate={mocks.createTemplate}
             onSaveDraft={mocks.saveDraft}
           />
         </section>
@@ -195,6 +227,7 @@ describe('PublishingDraftAction', () => {
           <PublishingDraftAction
             markdown={'# Second title\n\nThe second article has enough original body content.'}
             topicName="Second topic"
+            onCreateTemplate={mocks.createTemplate}
             onSaveDraft={mocks.saveDraft}
           />
         </section>
@@ -213,5 +246,21 @@ describe('PublishingDraftAction', () => {
     expect(screen.getByRole('textbox', { name: 'Article content' })).toHaveValue(
       'The second article has enough original body content.'
     )
+  })
+
+  it('starts template extraction from the generated article', async () => {
+    const user = userEvent.setup()
+    render(
+      <PublishingDraftAction
+        markdown={'# Reusable article\n\nThe article is long enough to extract a writing template.'}
+        topicName="Reusable article"
+        onCreateTemplate={mocks.createTemplate}
+        onSaveDraft={mocks.saveDraft}
+      />
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Save as template' }))
+
+    await waitFor(() => expect(mocks.createTemplate).toHaveBeenCalledOnce())
   })
 })

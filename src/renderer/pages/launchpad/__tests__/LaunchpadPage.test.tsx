@@ -212,14 +212,15 @@ describe('LaunchpadPage', () => {
       'w-[92px]',
       'justify-center'
     )
-    expect(screen.getByRole('button', { name: 'Agent' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Knowledge' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Manage' })).not.toBeInTheDocument()
+    // Chat is the single conversation entry, so agents gets no launchpad tile.
+    expect(screen.queryByRole('button', { name: 'Agent' })).not.toBeInTheDocument()
   })
 
   it('orders app tiles by the launchpad app order, appending the rest canonically', () => {
     // Launchpad app order is independent of the sidebar favorites order.
-    mocks.appOrder = ['translate', 'assistants', 'agents']
+    mocks.appOrder = ['translate', 'assistants', 'knowledge']
     mocks.sidebarFavorites = [appFavorite('assistants')]
 
     render(<LaunchpadPage />)
@@ -231,7 +232,6 @@ describe('LaunchpadPage', () => {
         [
           'Translate',
           'Chat',
-          'Agent',
           'Paintings',
           'Library',
           'Mini Apps',
@@ -243,11 +243,11 @@ describe('LaunchpadPage', () => {
         ].includes(label ?? '')
       )
 
-    expect(appLabels.slice(0, 4)).toEqual(['Translate', 'Chat', 'Agent', 'Paintings'])
+    expect(appLabels.slice(0, 4)).toEqual(['Translate', 'Chat', 'Knowledge', 'Paintings'])
   })
 
   it('sorts every app tile and persists to the launchpad app order, not the sidebar favorites', () => {
-    mocks.appOrder = ['translate', 'assistants', 'agents']
+    mocks.appOrder = ['translate', 'assistants', 'knowledge']
 
     render(<LaunchpadPage />)
 
@@ -257,7 +257,7 @@ describe('LaunchpadPage', () => {
     expect(systemSortable.items.map((item: { id: string }) => item.id).slice(0, 3)).toEqual([
       'translate',
       'assistants',
-      'agents'
+      'knowledge'
     ])
 
     act(() => {
@@ -265,7 +265,7 @@ describe('LaunchpadPage', () => {
     })
 
     const [persisted] = mocks.setAppOrder.mock.calls.at(-1) as unknown as [SidebarAppId[]]
-    expect(persisted.slice(0, 3)).toEqual(['assistants', 'agents', 'translate'])
+    expect(persisted.slice(0, 3)).toEqual(['assistants', 'knowledge', 'translate'])
     expect(persisted).toHaveLength(systemSortable.items.length)
     expect(mocks.setSidebarFavorites).not.toHaveBeenCalled()
   })
@@ -309,16 +309,14 @@ describe('LaunchpadPage', () => {
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app/chat' })
   })
 
-  it('opens chat and agent apps fresh in the current tab', async () => {
+  it('opens the chat app on its bare route so the interceptor picks the conversation', async () => {
     const user = userEvent.setup()
 
     render(<LaunchpadPage />)
 
     await user.click(screen.getByRole('button', { name: 'Chat' }))
-    await user.click(screen.getByRole('button', { name: 'Agent' }))
 
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app/chat' })
-    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app/agents' })
   })
 
   it('navigates concrete mini apps inside the current launchpad tab', async () => {

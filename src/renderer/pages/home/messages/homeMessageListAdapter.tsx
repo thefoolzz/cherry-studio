@@ -50,6 +50,7 @@ import {
   canEditAssistantMessageParts,
   replaceAssistantEditableMessageParts
 } from '@renderer/utils/message/partsHelpers'
+import { normalizeToolOutputResponse } from '@renderer/utils/message/toolOutput'
 import { isVisionModel } from '@renderer/utils/model'
 import { translateText } from '@renderer/utils/translate'
 import { generateImageOutputSchema } from '@shared/ai/builtinTools'
@@ -63,6 +64,7 @@ import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { PublishingArticleDraft } from './PublishingArticleEditorDialog'
+import { embedPublishingImages, getEmbeddedImageFileIds } from './publishingArticleImages'
 import { PublishingDraftAction } from './PublishingDraftAction'
 import {
   consumePendingTopicImageActions,
@@ -79,6 +81,7 @@ interface PublishingTailCacheEntry {
   chatWrite: ChatWriteActions | null
   imageFileIdsKey: string
   markdown: string
+  onSend?: (text: string) => Promise<unknown>
   tail: MessageTailSlot
   topicName: string
 }
@@ -86,17 +89,93 @@ interface PublishingTailCacheEntry {
 function getGeneratedImageFileIds(parts: CherryMessagePart[]): string[] {
   const ids = new Set<string>()
   for (const part of parts) {
-    if (!isToolUIPart(part) || part.state !== 'output-available' || getToolName(part) !== 'generate_image') continue
+    if (
+      !isToolUIPart(part) ||
+      part.state !== 'output-available' ||
+      !['generate_image', 'mcp__cherry-tools__generate_image'].includes(getToolName(part))
+    ) {
+      continue
+    }
     const output = (part as { output?: unknown }).output
-    const parsed = generateImageOutputSchema.safeParse(output)
+    const parsed = generateImageOutputSchema.safeParse(normalizeToolOutputResponse(output))
     if (!parsed.success) continue
     for (const image of parsed.data) ids.add(image.id)
   }
   return [...ids]
 }
 
-function getAttachmentFileIds(markdown: string): string[] {
-  return [...new Set([...markdown.matchAll(/attachment:\/\/([\w.-]+)/g)].map((match) => match[1]))]
+function getPublishingArticleMarkdown(parts: CherryMessagePart[]): string {
+  const textParts = parts.filter(
+    (part): part is Extract<CherryMessagePart, { type: 'text' }> => part.type === 'text' && part.text.trim().length > 0
+  )
+  const articlePart = textParts.findLast((part) => /^\s{0,3}#\s+\S/m.test(part.text))
+  return articlePart ? getComposerTextFromParts([articlePart]) : ''
+}
+
+interface PublishingImageProjection {
+  markdownByMessageId: ReadonlyMap<string, string>
+  partsByMessageId: Record<string, CherryMessagePart[]>
+}
+
+function projectPublishingArticleImages(
+  messages: MessageListItem[],
+  partsByMessageId: Record<string, CherryMessagePart[]>
+): PublishingImageProjection {
+  let projectedParts = partsByMessageId
+  const markdownByMessageId = new Map<string, string>()
+  let turnStart = 0
+
+  const updateParts = (messageId: string, parts: CherryMessagePart[]) => {
+    const current = projectedParts[messageId] ?? []
+    if (current.length === parts.length && current.every((part, index) => part === parts[index])) return
+    if (projectedParts === partsByMessageId) projectedParts = { ...partsByMessageId }
+    projectedParts[messageId] = parts
+  }
+
+  const projectTurn = (turnEnd: number) => {
+    const turnMessages = messages.slice(turnStart, turnEnd)
+    const latestMessage = turnMessages.findLast((message) => !message.isContextBoundary)
+    if (!latestMessage || latestMessage.role !== 'assistant' || latestMessage.status !== 'success') return
+
+    const articleMessage = turnMessages.findLast((message) => {
+      if (message.role !== 'assistant' || message.status !== 'success') return false
+      return getPublishingArticleMarkdown(partsByMessageId[message.id] ?? []).trim().length > 0
+    })
+    if (!articleMessage) return
+
+    const articleParts = partsByMessageId[articleMessage.id] ?? []
+    const sourceMarkdown = getPublishingArticleMarkdown(articleParts)
+    const generatedImageIds = [
+      ...new Set(turnMessages.flatMap((message) => getGeneratedImageFileIds(partsByMessageId[message.id] ?? [])))
+    ]
+    if (!sourceMarkdown.trim() || generatedImageIds.length === 0) return
+
+    const embeddedMarkdown = embedPublishingImages(sourceMarkdown, generatedImageIds)
+    markdownByMessageId.set(articleMessage.id, embeddedMarkdown)
+    const embeddedIds = new Set(getEmbeddedImageFileIds(embeddedMarkdown))
+
+    for (const message of turnMessages) {
+      const originalParts = partsByMessageId[message.id] ?? []
+      const displayParts =
+        message.id === articleMessage.id && embeddedMarkdown !== sourceMarkdown
+          ? replaceAssistantEditableMessageParts(originalParts, [{ type: 'text', text: embeddedMarkdown }])
+          : originalParts
+      const withoutEmbeddedImageTools = displayParts.filter((part) => {
+        const partImageIds = getGeneratedImageFileIds([part])
+        return partImageIds.length === 0 || !partImageIds.every((id) => embeddedIds.has(id))
+      })
+      updateParts(message.id, withoutEmbeddedImageTools)
+    }
+  }
+
+  for (let index = 0; index <= messages.length; index += 1) {
+    const message = messages[index]
+    if (index < messages.length && message?.role !== 'user' && !message?.isContextBoundary) continue
+    projectTurn(index)
+    turnStart = index + 1
+  }
+
+  return { markdownByMessageId, partsByMessageId: projectedParts }
 }
 
 interface HomeMessageListParams {
@@ -113,6 +192,7 @@ interface HomeMessageListParams {
   imageActionConsumer?: 'capture'
   onBindRuntime?: MessageListActions['bindRuntime']
   onStartBranchDraft?: MessageListActions['startMessageBranch']
+  onSend?: (text: string) => Promise<unknown>
   onComponentUpdate?(): void
   onFirstUpdate?(): void
 }
@@ -131,6 +211,7 @@ export function useHomeMessageListProviderValue({
   imageActionConsumer,
   onBindRuntime,
   onStartBranchDraft,
+  onSend,
   onComponentUpdate,
   onFirstUpdate
 }: HomeMessageListParams): MessageListProviderValue {
@@ -190,6 +271,24 @@ export function useHomeMessageListProviderValue({
     })
   }, [messages, resolvedAssistantId, topicId])
 
+  const publishingImageProjection = useMemo<PublishingImageProjection>(
+    () =>
+      assistant?.id === PUBLISHING_ASSISTANT_ID
+        ? projectPublishingArticleImages(messageItems, partsByMessageId)
+        : { markdownByMessageId: new Map(), partsByMessageId },
+    [assistant?.id, messageItems, partsByMessageId]
+  )
+  const publishingStreamingLayers = useMemo<MessageStreamingLayers | undefined>(() => {
+    if (!streamingLayers || assistant?.id !== PUBLISHING_ASSISTANT_ID) return streamingLayers
+    const projectedHistory = projectPublishingArticleImages(
+      messageItems,
+      streamingLayers.historyPartsByMessageId
+    ).partsByMessageId
+    return projectedHistory === streamingLayers.historyPartsByMessageId
+      ? streamingLayers
+      : { ...streamingLayers, historyPartsByMessageId: projectedHistory }
+  }, [assistant?.id, messageItems, streamingLayers])
+
   const publishingMessageTails = useMemo<MessageListState['messageTails']>(() => {
     if (assistant?.id !== PUBLISHING_ASSISTANT_ID) {
       publishingTailCacheRef.current.clear()
@@ -210,17 +309,19 @@ export function useHomeMessageListProviderValue({
       // article text. Keep every assistant message in the user turn attached.
       const articleMessage = turnMessages.findLast((message) => {
         if (message.role !== 'assistant' || message.status !== 'success') return false
-        return getComposerTextFromParts(partsByMessageId[message.id] ?? []).trim().length > 0
+        return getPublishingArticleMarkdown(partsByMessageId[message.id] ?? []).trim().length > 0
       })
       if (!articleMessage) return
 
       const articleParts = partsByMessageId[articleMessage.id] ?? []
-      const markdown = getComposerTextFromParts(articleParts)
+      const markdown =
+        publishingImageProjection.markdownByMessageId.get(articleMessage.id) ??
+        getPublishingArticleMarkdown(articleParts)
       if (!markdown.trim()) return
 
       const imageFileIds = [
         ...new Set([
-          ...getAttachmentFileIds(markdown),
+          ...getEmbeddedImageFileIds(markdown),
           ...turnMessages.flatMap((message) => getGeneratedImageFileIds(partsByMessageId[message.id] ?? []))
         ])
       ]
@@ -231,6 +332,7 @@ export function useHomeMessageListProviderValue({
         cached.articleParts === articleParts &&
         cached.chatWrite === chatWrite &&
         cached.imageFileIdsKey === imageFileIdsKey &&
+        cached.onSend === onSend &&
         cached.topicName === topic.name
           ? cached.tail
           : {
@@ -241,6 +343,17 @@ export function useHomeMessageListProviderValue({
                   markdown={markdown}
                   topicName={topic.name}
                   imageFileIds={imageFileIds}
+                  onCreateTemplate={async () => {
+                    if (!onSend) throw new Error(t('message.error.operation_unavailable'))
+                    await onSend(
+                      [
+                        '请把下面这篇当前成稿提炼成可复用的写作模板并直接保存。只学习内容类型、语气节奏、结构职责、变量、写作规则和质量检查，不要把文章中的事实、案例、数据或独特句子写入模板。',
+                        '<article>',
+                        markdown,
+                        '</article>'
+                      ].join('\n\n')
+                    )
+                  }}
                   onSaveDraft={async (draft: PublishingArticleDraft) => {
                     if (!chatWrite || !canEditAssistantMessageParts(articleParts)) {
                       throw new Error(t('message.error.operation_unavailable'))
@@ -261,6 +374,7 @@ export function useHomeMessageListProviderValue({
         chatWrite,
         imageFileIdsKey,
         markdown,
+        onSend,
         tail,
         topicName: topic.name
       })
@@ -284,7 +398,16 @@ export function useHomeMessageListProviderValue({
     const nextTails = tails.length > 0 ? tails : undefined
     publishingMessageTailsRef.current = nextTails
     return nextTails
-  }, [assistant?.id, chatWrite, messageItems, partsByMessageId, t, topic.name])
+  }, [
+    assistant?.id,
+    chatWrite,
+    messageItems,
+    onSend,
+    partsByMessageId,
+    publishingImageProjection.markdownByMessageId,
+    t,
+    topic.name
+  ])
 
   const messagesRef = useRef<MessageListItem[]>(messageItems)
   const partsByMessageIdRef = useRef(partsByMessageId)
@@ -905,8 +1028,8 @@ export function useHomeMessageListProviderValue({
     () => ({
       topic,
       messages: messageItems,
-      partsByMessageId,
-      streamingLayers,
+      partsByMessageId: publishingImageProjection.partsByMessageId,
+      streamingLayers: publishingStreamingLayers,
       messageTails: publishingMessageTails,
       isInitialLoading,
       isMessagesStale,
@@ -941,12 +1064,12 @@ export function useHomeMessageListProviderValue({
       messageUiStateCache.getMessageUiState,
       messageItems,
       messageNavigation,
-      partsByMessageId,
+      publishingImageProjection.partsByMessageId,
       publishingMessageTails,
       renderConfig,
       resolvedAssistantId,
       selectionController.selection,
-      streamingLayers,
+      publishingStreamingLayers,
       topic,
       translationLanguages,
       translationLanguagesStatus
