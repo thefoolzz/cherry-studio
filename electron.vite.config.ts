@@ -136,11 +136,6 @@ export default defineConfig({
     }
   },
   renderer: {
-    define: {
-      __APP_RELEASE_HISTORY__: JSON.stringify(bundledReleaseHistory),
-      __APP_RELEASE_NOTES__: JSON.stringify(bundledReleaseNotes),
-      __APP_RELEASE_VERSION__: JSON.stringify(pkg.version)
-    },
     plugins: [
       uiContractPlugin(),
       tanstackRouter({

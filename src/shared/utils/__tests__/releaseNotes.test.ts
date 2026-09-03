@@ -3,8 +3,6 @@ import { describe, expect, it } from 'vitest'
 import {
   hasMultiLanguageReleaseNotes,
   localizeReleaseNotes,
-  mergeReleaseHistory,
-  mergeReleaseNotes,
   parseReleaseHistory,
   validateCurrentReleaseHistory
 } from '../releaseNotes'
@@ -62,35 +60,6 @@ describe('releaseNotes', () => {
     ]
   ])('rejects %s in bundled history', (_case, source) => {
     expect(() => parseReleaseHistory(source)).toThrow('release-history.json')
-  })
-
-  it('keeps the current release first and removes its historical duplicate', () => {
-    const current = { releaseNotes: 'Current', version: '2.0.1' }
-    const history = [
-      { releaseNotes: 'Stale current', version: '2.0.1' },
-      { releaseNotes: 'Previous', version: '2.0.0' }
-    ]
-
-    expect(mergeReleaseNotes(current, history)).toEqual([current, { releaseNotes: 'Previous', version: '2.0.0' }])
-  })
-
-  it('merges remote and bundled history by version while preferring remote notes', () => {
-    const remote = [
-      { releaseNotes: 'Remote current', version: '2.0.2' },
-      { releaseNotes: 'Remote previous', version: '2.0.1' }
-    ]
-    const bundled = [
-      { releaseNotes: 'Bundled newer', version: '2.0.3' },
-      { releaseNotes: 'Bundled stale current', version: '2.0.2' },
-      { releaseNotes: 'Bundled oldest', version: '2.0.0' }
-    ]
-
-    expect(mergeReleaseHistory(remote, bundled)).toEqual([
-      { releaseNotes: 'Bundled newer', version: '2.0.3' },
-      { releaseNotes: 'Remote current', version: '2.0.2' },
-      { releaseNotes: 'Remote previous', version: '2.0.1' },
-      { releaseNotes: 'Bundled oldest', version: '2.0.0' }
-    ])
   })
 
   it('accepts a stable current release whose bundled history notes match', () => {
