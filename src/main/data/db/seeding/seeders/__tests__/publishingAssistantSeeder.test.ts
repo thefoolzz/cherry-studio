@@ -46,6 +46,19 @@ describe('PublishingAssistantSeeder', () => {
     expect(hashObject(assistant.prompt)).toBe(fingerprint?.promptHash)
   })
 
+  it('defaults published articles to a cover and scene-specific inline illustrations', async () => {
+    new PublishingAssistantSeeder().run(dbh.db)
+
+    const assistant = await readAssistant()
+    const prompt = assistant.prompt
+
+    expect(assistant.settings.enableGenerateImage).toBe(true)
+    expect(prompt).toContain('短稿或单一观点默认封面加一张正文图')
+    expect(prompt).toContain('常规文章默认封面加两到三张正文图')
+    expect(prompt).toContain('封面图紧跟一级标题并位于导语之前')
+    expect(prompt).toContain('只有用户明确表示不要图片时才跳过')
+  })
+
   it('refreshes a prompt left over from an earlier release', async () => {
     const seeder = new PublishingAssistantSeeder()
     seeder.run(dbh.db)
