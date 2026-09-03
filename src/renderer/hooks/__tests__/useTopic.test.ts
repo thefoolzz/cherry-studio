@@ -29,11 +29,6 @@ vi.mock('@renderer/hooks/tab', () => ({
   useCloseConversationTabs: () => mockCloseConversationTabs
 }))
 
-vi.mock('@renderer/services/EventService', () => ({
-  EVENT_NAMES: { CHANGE_TOPIC: 'change-topic' },
-  EventEmitter: { emit: vi.fn() }
-}))
-
 const apiMessage = (id: string, isContextBoundary = false) => ({
   id,
   topicId: 'topic-a',
