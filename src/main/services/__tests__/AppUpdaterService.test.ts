@@ -87,7 +87,6 @@ vi.mock('electron-updater', () => {
 
 import { application } from '@application'
 import { regionService } from '@main/services/RegionService'
-import { UpgradeChannel } from '@shared/data/preference/preferenceTypes'
 import { APP_NAME } from '@shared/utils/constants'
 import { MockMainPreferenceServiceUtils } from '@test-mocks/main/PreferenceService'
 import { app } from 'electron'
@@ -101,8 +100,6 @@ describe('AppUpdaterService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     MockMainPreferenceServiceUtils.resetMocks()
-    MockMainPreferenceServiceUtils.setPreferenceValue('app.dist.test_plan.enabled', false)
-    MockMainPreferenceServiceUtils.setPreferenceValue('app.dist.test_plan.channel', UpgradeChannel.LATEST)
     vi.mocked(app.getVersion).mockReturnValue('1.0.0')
     vi.mocked(regionService.getCountry).mockResolvedValue('US')
     vi.mocked(autoUpdater.checkForUpdates).mockResolvedValue(null)
@@ -117,7 +114,7 @@ describe('AppUpdaterService', () => {
     it('uses the latest channel and global region outside China', async () => {
       await (appUpdater as any).configureUpdaterForCheck()
 
-      expect(autoUpdater.channel).toBe(UpgradeChannel.LATEST)
+      expect(autoUpdater.channel).toBe('latest')
       expect(autoUpdater.requestHeaders).toMatchObject({
         'User-Agent': 'test-user-agent',
         'Cache-Control': 'no-cache',
@@ -154,31 +151,20 @@ describe('AppUpdaterService', () => {
       })
     })
 
-    it.each([
-      ['RC', UpgradeChannel.RC],
-      ['Beta', UpgradeChannel.BETA]
-    ])('requests the %s manifest when that test channel is enabled', async (_label, channel) => {
-      MockMainPreferenceServiceUtils.setPreferenceValue('app.dist.test_plan.enabled', true)
-      MockMainPreferenceServiceUtils.setPreferenceValue('app.dist.test_plan.channel', channel)
-
-      await (appUpdater as any).configureUpdaterForCheck()
-
-      expect(autoUpdater.channel).toBe(channel)
-    })
-
-    it('uses the selected test channel when the installed prerelease came from another channel', async () => {
+    // The packaged app-update.yml of a prerelease build carries channel: rc/beta, so
+    // without the override those installs would keep following the prerelease feed.
+    it('pulls a prerelease install back onto the stable channel', async () => {
       vi.mocked(app.getVersion).mockReturnValue('2.0.0-rc.1')
-      MockMainPreferenceServiceUtils.setPreferenceValue('app.dist.test_plan.enabled', true)
-      MockMainPreferenceServiceUtils.setPreferenceValue('app.dist.test_plan.channel', UpgradeChannel.BETA)
+      autoUpdater.channel = 'rc'
 
       await (appUpdater as any).configureUpdaterForCheck()
 
-      expect(autoUpdater.channel).toBe(UpgradeChannel.BETA)
+      expect(autoUpdater.channel).toBe('latest')
     })
 
     it('applies the channel and request headers before checking for updates', async () => {
       vi.mocked(autoUpdater.checkForUpdates).mockImplementation(async () => {
-        expect(autoUpdater.channel).toBe(UpgradeChannel.LATEST)
+        expect(autoUpdater.channel).toBe('latest')
         expect(autoUpdater.requestHeaders).toMatchObject({
           'App-Version': 'v1.0.0',
           'X-Region': 'global'

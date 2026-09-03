@@ -1,8 +1,7 @@
 ---
-description: How clients check GitHub Releases for updates, with channels and the release history feed
+description: How clients check GitHub Releases for updates
 sources:
   - src/main/services/AppUpdaterService.ts
-  - resources/cherry-studio/release-history.json
   - electron-builder.yml
   - dev-app-update.yml
 ---
@@ -11,9 +10,7 @@ sources:
 
 ## Overview
 
-Cherry Studio clients check for updates from the latest release in `thefoolzz/cherry-studio`. The client selects an update channel and sends application, client, platform, and region metadata. GitHub Releases provides the platform-specific update manifest and its referenced installer or archive.
-
-Stable release preparation updates `resources/cherry-studio/release-history.json`, and the release workflow publishes that generated file as a release asset. Clients fetch it from the repository's latest GitHub release. Each build also bundles the file as an offline fallback.
+Cherry Studio clients check for updates from the latest release in `thefoolzz/cherry-studio`. The client sends application, client, platform, and region metadata. GitHub Releases provides the platform-specific update manifest and its referenced installer or archive.
 
 ## Update Feed Configuration
 
@@ -21,15 +18,9 @@ Stable release preparation updates `resources/cherry-studio/release-history.json
 - Development builds set `forceDevUpdateConfig = true`, so electron-updater reads `dev-app-update.yml` from the repository root. It uses the same `thefoolzz/cherry-studio` GitHub Releases feed.
 - Repository changes take effect in newly produced application builds. The client does not override the packaged feed at runtime.
 
-## Channels
+## Channel
 
-The client requests one of these electron-updater channels:
-
-- `latest`: stable release channel.
-- `rc`: release candidate channel.
-- `beta`: beta release channel.
-
-When the test plan is disabled, the client selects `latest`. When it is enabled, the client uses the RC or Beta channel selected in settings. electron-updater requests the corresponding channel manifest from the managed feed.
+The client always requests the `latest` (stable) channel. It sets that explicitly before every check, overriding the channel electron-builder wrote into the packaged `app-update.yml`, so an installed prerelease follows stable releases from then on. There is no user-facing channel switch.
 
 ## Request Contract
 
@@ -45,7 +36,7 @@ Before each update check, the client preserves existing updater headers and sets
 | `User-Agent` | Generated Cherry Studio user agent |
 | `Cache-Control` | `no-cache` |
 
-The selected electron-updater channel determines whether the client requests the `latest`, `rc`, or `beta` manifest; no separate release-channel header is sent.
+The client always requests the `latest` manifest; no separate release-channel header is sent.
 
 ## Check Lifecycle
 
