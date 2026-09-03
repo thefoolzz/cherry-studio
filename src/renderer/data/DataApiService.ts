@@ -39,6 +39,8 @@ import type { DataRequest, DataResponse, HttpMethod } from '@shared/data/api/typ
 import { DataApiDevtools } from './utils/dataApiDevtools'
 
 const logger = loggerService.withContext('DataApiService')
+/** Hard ceiling for a single DataApi IPC round trip. */
+const REQUEST_TIMEOUT_MS = 3000
 
 /**
  * Retry options interface.
@@ -136,15 +138,19 @@ export class DataApiService implements ApiClient {
       timestamp: Date.now()
     }
 
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined
     try {
       logger.debug(`Making ${request.method} request to ${request.path}`, { request })
 
       // Direct IPC call with timeout
       const response = await Promise.race([
         window.api.dataApi.request(request),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(DataApiErrorFactory.timeout(request.path, 3000, requestContext)), 3000)
-        )
+        new Promise<never>((_, reject) => {
+          timeoutHandle = setTimeout(
+            () => reject(DataApiErrorFactory.timeout(request.path, REQUEST_TIMEOUT_MS, requestContext)),
+            REQUEST_TIMEOUT_MS
+          )
+        })
       ])
 
       if (response.error) {
@@ -209,6 +215,10 @@ export class DataApiService implements ApiClient {
       }
 
       throw apiError
+    } finally {
+      // The losing race branch stays pending otherwise, keeping the request and a stack-capturing
+      // error factory alive for the full timeout on every call.
+      clearTimeout(timeoutHandle)
     }
   }
 

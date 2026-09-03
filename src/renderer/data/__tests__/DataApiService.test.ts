@@ -241,3 +241,20 @@ describe('DataApiService devtools instrumentation', () => {
     expect(window.__CHERRY_DATA_API_DEVTOOLS__).toBeUndefined()
   })
 })
+
+describe('DataApiService request timeout', () => {
+  it('clears the timeout race once a request settles', async () => {
+    vi.useFakeTimers()
+    try {
+      const service = await createService()
+      request.mockImplementation(async (req) => ({ id: req.id, status: 200, data: { ok: true } }))
+
+      await expect(service.get('/providers' as any)).resolves.toEqual({ ok: true })
+
+      // A leaked timer keeps the request payload and a stack-capturing error factory alive for 3s.
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
