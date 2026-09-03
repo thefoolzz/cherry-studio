@@ -164,30 +164,60 @@ artifactBuildCompleted: scripts/artifact-build-completed.js
 releaseInfo:
   releaseNotes: |
     <!--LANG:en-->
-    Cherry Studio 2.0.10 - Publishing and Download Improvements
+    Cherry Studio 2.0.12 - Smarter Publishing and Faster Conversations
 
     ✨ New Features
-    - [Publishing] Edit each generated article before sending it to a publishing channel.
-    - [Website] Explore chenwei's multi-platform publishing workflow on the new product website.
+    - [Publishing] Create articles and reusable writing templates in one guided workflow.
+    - [Publishing] Review draft length, structure, repetition, placeholders, and common AI writing patterns before delivery.
+    - [Settings] Manage updates, diagnostics, and debugging from General settings.
 
     🐛 Bug Fixes
-    - [Publishing] Keep article edits synchronized with the generated draft and publishing action.
+    - [Publishing] Generate a cover and scene-aware inline illustrations by default unless images are explicitly disabled.
+    - [Publishing] Preserve custom edits to the built-in Article Assistant across upgrades.
+    - [Publishing] Keep headings, tables, lists, links, and code styling intact in WeChat drafts.
+    - [Publishing] Remove internal citation markers before content reaches a publishing platform.
+    - [Templates] Keep long writing-template labels readable by preserving their most distinctive text.
+    - [Updates] Keep this build on the stable update channel.
+    - [Data] Clean up completed requests immediately to reduce unnecessary background work.
 
     💄 Improvements
-    - [Website] Download choices now appear from a built-in release list even when GitHub is unavailable, with the visitor's platform shown first.
-    - [Website] Refresh product messaging for WeChat, Douyin, Xiaohongshu, and Zhihu publishing.
+    - [Publishing] Rename the built-in publishing assistant to Article Assistant to reflect multi-platform support.
+    - [Publishing] Use measured review results to improve article quality and meet requested lengths more reliably.
+    - [Settings] Remove upstream links and prerelease controls that do not apply to this build.
+    - [Navigation] Simplify the sidebar by removing the external help menu.
+    - [App] Keep chenwei branding consistent across the desktop experience.
+
+    ⚡ Performance
+    - [Chat] Open conversations with generated images much faster without embedding large image data in Markdown.
+    - [Chat] Load only the requested page of very long conversation branches.
+    - [Chat] Speed up switching and loading within conversations that contain message branches.
 
     <!--LANG:zh-CN-->
-    Cherry Studio 2.0.10 - 发布与下载体验升级
+    Cherry Studio 2.0.12 - 文章发布更智能，对话更流畅
 
     ✨ 新功能
-    - [发布] 支持在发送到发布平台前逐篇编辑生成的文章。
-    - [官网] 新增产品官网，展示chenwei的多平台内容发布流程。
+    - [发布] 在同一套引导流程中完成文章创作与可复用写作模板。
+    - [发布] 交稿前自动检查字数、结构、重复、占位内容和常见 AI 写作痕迹。
+    - [设置] 在“通用”设置中统一管理更新、诊断与调试功能。
 
     🐛 问题修复
-    - [发布] 修复文章编辑内容与生成草稿及发布操作不同步的问题。
+    - [发布] 默认为成稿生成封面和按场景匹配的正文插图，只在明确不要图片时跳过。
+    - [发布] 升级时保留用户对内置“文章助手”的自定义修改。
+    - [发布] 微信公众号草稿中的标题、表格、列表、链接和代码样式保持一致。
+    - [发布] 发布前移除内部引用标记，避免其出现在最终内容中。
+    - [模板] 长模板名称优先保留最有辨识度的文字，查找时更容易分辨。
+    - [更新] 固定使用稳定更新通道。
+    - [数据] 请求完成后立即清理超时任务，减少不必要的后台开销。
 
     💄 改进
-    - [官网] GitHub 暂时不可用时仍从内置版本列表展示下载选项，并优先显示访客当前平台。
-    - [官网] 更新产品介绍，完整呈现微信公众号、抖音、小红书和知乎发布能力。
+    - [发布] 内置发布助手更名为“文章助手”，准确表达多平台写作与发布能力。
+    - [发布] 使用实际检查结果优化成稿，更可靠地满足文章质量和字数要求。
+    - [设置] 移除不适用于当前版本的上游链接与预发布选项。
+    - [导航] 移除侧边栏外部帮助菜单，界面更简洁。
+    - [应用] 统一桌面端各处的 chenwei 品牌名称。
+
+    ⚡ 性能优化
+    - [对话] 生成图片不再以大段数据嵌入 Markdown，打开含图对话明显更快。
+    - [对话] 长对话分支仅加载当前页所需内容。
+    - [对话] 提升含消息分支对话的切换与加载速度。
     <!--LANG:END-->
