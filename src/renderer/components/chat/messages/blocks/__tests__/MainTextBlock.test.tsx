@@ -322,17 +322,16 @@ describe('MainTextBlock', () => {
       expect(getRenderedPlainText()).not.toBeInTheDocument()
     })
 
-    it('renders generated attachment images in their article positions', () => {
+    it('forwards generated attachment urls without inlining them into the markdown source', () => {
       renderMainTextBlock({
         content: '开场\n\n![封面](attachment://image-1)\n\n正文',
         role: 'assistant',
-        attachmentFileUrls: new Map([['image-1', 'file:///generated-cover.png']])
+        attachmentFileUrls: new Map([['image-1', 'blob:generated-cover']])
       })
 
-      expect(getRenderedMarkdown()).toHaveAttribute(
-        'data-content',
-        '开场\n\n![封面](file:///generated-cover.png)\n\n正文'
-      )
+      // Inlining the url here would push the whole image through the markdown parser on every render.
+      expect(getRenderedMarkdown()).toHaveAttribute('data-content', '开场\n\n![封面](attachment://image-1)\n\n正文')
+      expect(capturedChatMarkdownProps.at(-1)?.attachmentFileUrls?.get('image-1')).toBe('blob:generated-cover')
     })
 
     it('keeps inline HTML generating until smoothed content reaches the completed source', () => {

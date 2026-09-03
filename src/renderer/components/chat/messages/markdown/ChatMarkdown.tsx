@@ -12,6 +12,8 @@ export interface ChatMarkdownProps {
   className?: string
   components?: Partial<Components>
   trustedCitations?: readonly Citation[]
+  /** Generated-image file id → loadable object URL, consumed by the `img` renderer. */
+  attachmentFileUrls?: ReadonlyMap<string, string>
 }
 
 export type InlineHtmlPreviewMode = 'generating' | 'ready'

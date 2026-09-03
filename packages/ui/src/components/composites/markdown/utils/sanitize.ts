@@ -240,7 +240,9 @@ export function createMarkdownSanitizeSchema(schema: MarkdownSanitizeSchema): Ma
       xlinkHref: safeLinkProtocols,
       xLinkHref: safeLinkProtocols,
       'xlink:href': safeLinkProtocols,
-      src: mergeUnique(schema.protocols?.src, ['data'])
+      // `attachment:` is an opaque file id the consumer's `img` renderer resolves; keeping it in the
+      // source avoids inlining multi-megabyte data URLs the markdown parser would re-tokenize.
+      src: mergeUnique(schema.protocols?.src, ['data', 'attachment'])
     }
   }
 }

@@ -37,6 +37,7 @@ const ChatMarkdownRuntime: FC<ChatMarkdownRuntimeProps> = ({
   className,
   components,
   trustedCitations,
+  attachmentFileUrls,
   createPlugins = createDefaultPlugins
 }) => {
   const { t } = useTranslation()
@@ -112,6 +113,7 @@ const ChatMarkdownRuntime: FC<ChatMarkdownRuntimeProps> = ({
     <ChatMarkdownRenderProvider
       blockId={block.id}
       citationRegistry={citationRegistry}
+      attachmentFileUrls={attachmentFileUrls}
       inlineHtmlPreviewMode={inlineHtmlPreviewMode}
       isStreaming={isStreaming}>
       {renderer}

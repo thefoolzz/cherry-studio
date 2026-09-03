@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   blobToDataUrl: vi.fn(),
+  createObjectURL: vi.fn(),
+  revokeObjectURL: vi.fn(),
   createTemplate: vi.fn(),
   getImageBlobFromSource: vi.fn(),
   request: vi.fn(),
@@ -101,6 +103,10 @@ describe('PublishingDraftAction', () => {
     mocks.getImageBlobFromSource.mockReset().mockResolvedValue(new Blob(['image'], { type: 'image/png' }))
     mocks.createTemplate.mockReset().mockResolvedValue(undefined)
     mocks.blobToDataUrl.mockReset().mockResolvedValue('data:image/png;base64,cHJldmlldw==')
+    mocks.createObjectURL.mockReset().mockReturnValue('blob:article-preview')
+    mocks.revokeObjectURL.mockReset()
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: mocks.createObjectURL })
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: mocks.revokeObjectURL })
     mocks.toSafeFileUrl.mockReset().mockImplementation((path: string) => `file://${path}`)
     mocks.saveDraft.mockReset().mockResolvedValue(undefined)
     mocks.request.mockReset().mockImplementation(async (route: string) => {
@@ -166,7 +172,8 @@ describe('PublishingDraftAction', () => {
 
     await user.click(screen.getByRole('button', { name: 'Edit' }))
     const contentInput = await screen.findByRole('textbox', { name: 'Article content' })
-    expect(contentInput).toHaveValue('Before image.\n\n![Preview](data:image/png;base64,cHJldmlldw==)\n\nAfter image.')
+    // An object URL, not a data URL: inlining the image would bloat the edited document.
+    expect(contentInput).toHaveValue('Before image.\n\n![Preview](blob:article-preview)\n\nAfter image.')
     expect(mocks.request).toHaveBeenCalledWith('file.batch_get_physical_paths', { ids: ['image-1'] })
     expect(mocks.toSafeFileUrl).toHaveBeenCalledWith('/tmp/image.png', null)
     expect(mocks.getImageBlobFromSource).toHaveBeenCalledWith('file:///tmp/image.png')

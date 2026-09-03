@@ -34,6 +34,8 @@ import {
 } from './utils'
 
 const STREAMDOWN_DEFAULT_REMARK_PLUGINS = Object.values(defaultRemarkPlugins)
+/** `src` values the default URL transform would strip: inline images, and consumer-resolved attachment ids. */
+const PRESERVED_SRC_REGEX = /^(?:data:image\/(?:png|jpeg);|attachment:)/i
 
 function MarkdownBlock({ content, ...props }: BlockProps): ReactElement {
   const markdownCtx = useMemo(() => ({ content }), [content])
@@ -137,7 +139,7 @@ export function MarkdownCore({
   }, [hasSvgElement, id, extraRehypePlugins])
 
   const urlTransform = useCallback((value: string, key: string, node: Parameters<typeof defaultUrlTransform>[2]) => {
-    if (key === 'src' && /^data:image\/(?:png|jpeg);/i.test(value)) return value
+    if (key === 'src' && PRESERVED_SRC_REGEX.test(value)) return value
     return defaultUrlTransform(value, key, node)
   }, [])
 

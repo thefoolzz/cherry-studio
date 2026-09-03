@@ -362,6 +362,34 @@ describe('utils/image', () => {
       expect(image.getAttribute('srcset')).toBe('file:///tmp/avatar@2x.webp 2x')
     })
 
+    it('inlines blob image sources while capturing and restores them afterward', async () => {
+      const blobUrl = 'blob:http://localhost:5173/generated-cover'
+      const fetchMock = vi.fn(
+        async () => new Response(new Uint8Array([1, 2, 3]), { headers: { 'Content-Type': 'image/webp' } })
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      const finalCanvas = { toDataURL: vi.fn(() => 'final') } as unknown as HTMLCanvasElement
+      vi.mocked(htmlToImage.toCanvas).mockImplementation(async (node) => {
+        // Left as a blob url, html-to-image's cacheBust query string would make it unfetchable.
+        expect((node.querySelector('img') as HTMLImageElement).src).toMatch(/^data:image\/webp;base64,/)
+        return finalCanvas
+      })
+
+      const div = document.createElement('div')
+      const image = document.createElement('img')
+      image.src = blobUrl
+      div.appendChild(image)
+      Object.defineProperty(div, 'scrollWidth', { value: 100, configurable: true })
+      Object.defineProperty(div, 'scrollHeight', { value: 100, configurable: true })
+      const ref = { current: div } as React.RefObject<HTMLDivElement>
+
+      await expect(captureScrollable(ref)).resolves.toBe(finalCanvas)
+
+      expect(fetchMock).toHaveBeenCalledWith(blobUrl)
+      expect(image.getAttribute('src')).toBe(blobUrl)
+    })
+
     it('deduplicates identical file image reads during capture', async () => {
       ipcMocks.request.mockResolvedValue({
         content: new Uint8Array([1, 2, 3]),

@@ -13,7 +13,7 @@ import {
 import { loggerService } from '@logger'
 import RichEditor from '@renderer/components/RichEditor/RichEditor'
 import { ipcApi } from '@renderer/ipc'
-import { blobToDataUrl, getImageBlobFromSource } from '@renderer/utils/image'
+import { getImageBlobFromSource } from '@renderer/utils/image'
 import { toSafeFileUrl } from '@shared/utils/file'
 import { Save } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -65,6 +65,7 @@ export function PublishingArticleEditorDialog({ draft, onCancel, onSave }: Publi
     if (attachmentIds.length === 0) return
 
     let cancelled = false
+    const objectUrls: string[] = []
     void ipcApi
       .request('file.batch_get_physical_paths', { ids: attachmentIds })
       .then(async (paths) => {
@@ -73,7 +74,15 @@ export function PublishingArticleEditorDialog({ draft, onCancel, onSave }: Publi
             const path = paths[id]
             if (!path) return null
             try {
-              const previewUrl = await getImageBlobFromSource(toSafeFileUrl(path, null)).then(blobToDataUrl)
+              const blob = await getImageBlobFromSource(toSafeFileUrl(path, null))
+              // An object URL keeps the edited document small; a data URL would inline the whole image
+              // into the editor content and every markdown round trip.
+              const previewUrl = URL.createObjectURL(blob)
+              if (cancelled) {
+                URL.revokeObjectURL(previewUrl)
+                return null
+              }
+              objectUrls.push(previewUrl)
               return [id, previewUrl] as const
             } catch (error) {
               logger.warn('Failed to load publishing attachment preview', error as Error)
@@ -97,6 +106,8 @@ export function PublishingArticleEditorDialog({ draft, onCancel, onSave }: Publi
 
     return () => {
       cancelled = true
+      for (const objectUrl of objectUrls) URL.revokeObjectURL(objectUrl)
+      objectUrls.length = 0
     }
   }, [attachmentIds, draft.markdown])
 

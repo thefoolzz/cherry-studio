@@ -144,11 +144,6 @@ function escapeHtmlAttribute(value: string) {
   return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-function replaceAttachmentImageRefs(content: string, attachmentFileUrls?: ReadonlyMap<string, string>): string {
-  if (!attachmentFileUrls?.size) return content
-  return content.replace(/attachment:\/\/([\w.-]+)/g, (match, id: string) => attachmentFileUrls.get(id) ?? match)
-}
-
 function getComposerMarkdownTokenPlaceholder(index: number, blockId: string) {
   return `<span ${COMPOSER_TOKEN_MARKDOWN_ATTR}="${index}" ${COMPOSER_TOKEN_MARKDOWN_BLOCK_ATTR}="${escapeHtmlAttribute(blockId)}"></span>`
 }
@@ -398,19 +393,16 @@ const MainTextBlock: React.FC<Props> = ({
   )
   const processContent = useCallback(
     (rawText: string) => {
-      const withImages = (text: string) => replaceAttachmentImageRefs(text, attachmentFileUrls)
       if (citationReferences?.length && citations.length > 0) {
         const sourceType = determineCitationSource(citationReferences)
-        return withImages(withCitationTags(rawText, citations, sourceType))
+        return withCitationTags(rawText, citations, sourceType)
       }
       if (toolCitations) {
-        return withImages(
-          withToolCitationTags(rawText, toolCitations.citations, toolCitations.projection.byMarker).content
-        )
+        return withToolCitationTags(rawText, toolCitations.citations, toolCitations.projection.byMarker).content
       }
-      return withImages(rawText)
+      return rawText
     },
-    [attachmentFileUrls, citationReferences, citations, toolCitations]
+    [citationReferences, citations, toolCitations]
   )
   const toolCitedCitations = toolCitations?.projection.cited ?? EMPTY_CITATIONS
   const footerCitations = citations.length > 0 ? citations : toolCitedCitations
@@ -459,6 +451,7 @@ const MainTextBlock: React.FC<Props> = ({
               components={composerMarkdownComponents}
               postProcess={processContent}
               trustedCitations={trustedCitations}
+              attachmentFileUrls={attachmentFileUrls}
             />
           ) : shouldRenderComposerTokens || !renderInputMessageAsMarkdown ? (
             <p className="markdown" style={{ whiteSpace: 'pre-wrap' }}>
@@ -467,7 +460,12 @@ const MainTextBlock: React.FC<Props> = ({
                 : userDisplayContent}
             </p>
           ) : (
-            <ChatMarkdown block={block} postProcess={processContent} trustedCitations={trustedCitations} />
+            <ChatMarkdown
+              block={block}
+              postProcess={processContent}
+              trustedCitations={trustedCitations}
+              attachmentFileUrls={attachmentFileUrls}
+            />
           )}
         </CollapsibleUserMessageContent>
       ) : (
@@ -476,6 +474,7 @@ const MainTextBlock: React.FC<Props> = ({
           inlineHtmlPreviewMode={resolvedInlineHtmlPreviewMode}
           postProcess={processContent}
           trustedCitations={trustedCitations}
+          attachmentFileUrls={attachmentFileUrls}
         />
       )}
       {/* Parts data stores citation refs per text part, so the list is scoped to the text segment that produced it. */}
