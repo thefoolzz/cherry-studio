@@ -4759,6 +4759,7 @@
   "settings.translate.title": "Definições de tradução",
   "settings.tray.onclose": "Minimizar para bandeja ao fechar",
   "settings.tray.show": "Mostrar ícone de bandeja",
+  "settings.update.title": "Atualizações",
   "settings.usage.cards.activeDays": "Dias ativos",
   "settings.usage.cards.cacheHitRate": "Taxa de acerto do cache",
   "settings.usage.cards.cacheObservedTokens": "Entrada observável: {{tokens}}",

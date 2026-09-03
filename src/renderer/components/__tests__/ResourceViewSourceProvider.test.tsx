@@ -281,7 +281,7 @@ describe('ResourceViewSourceProvider', () => {
 
     await waitFor(() => expect(screen.getByTestId('renderer-topic-ids')).toHaveTextContent('topic-1'))
 
-    sourceMocks.tabs = [createTab('chat', '/app/chat', true), createTab('settings', '/settings/about')]
+    sourceMocks.tabs = [createTab('chat', '/app/chat', true), createTab('settings', '/settings/general')]
     sourceMocks.activeTabId = 'settings'
     rerender(createProviderTree())
 

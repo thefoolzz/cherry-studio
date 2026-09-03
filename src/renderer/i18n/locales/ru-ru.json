@@ -4759,6 +4759,7 @@
   "settings.translate.title": "Настройки перевода",
   "settings.tray.onclose": "Свернуть в трей при закрытии",
   "settings.tray.show": "Показать значок в трее",
+  "settings.update.title": "Обновления",
   "settings.usage.cards.activeDays": "Активные дни",
   "settings.usage.cards.cacheHitRate": "Коэффициент попадания в кэш",
   "settings.usage.cards.cacheObservedTokens": "Наблюдаемый ввод: {{tokens}}",

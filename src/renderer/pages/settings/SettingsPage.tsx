@@ -22,7 +22,6 @@ import {
   FileBox,
   FileCode,
   HardDrive,
-  Info,
   Package,
   Palette,
   PictureInPicture2,
@@ -246,14 +245,6 @@ const SettingsPage: FC = () => {
                 label={t('settings.dependencies.title')}
                 active={isActive('/settings/dependencies')}
                 onClick={() => go('/settings/dependencies')}
-              />
-              <MenuItem
-                className={settingsSubmenuItemClassName}
-                labelClassName={settingsSubmenuItemLabelClassName}
-                icon={<Info />}
-                label={t('settings.about.label')}
-                active={isActive('/settings/about')}
-                onClick={() => go('/settings/about')}
               />
             </MenuList>
           </Scrollbar>

@@ -4759,6 +4759,7 @@
   "settings.translate.title": "Translation settings",
   "settings.tray.onclose": "Minimize to Tray on Close",
   "settings.tray.show": "Show Tray Icon",
+  "settings.update.title": "Updates",
   "settings.usage.cards.activeDays": "Active days",
   "settings.usage.cards.cacheHitRate": "Cache hit rate",
   "settings.usage.cards.cacheObservedTokens": "Observable input: {{tokens}}",

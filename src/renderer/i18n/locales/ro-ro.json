@@ -4759,6 +4759,7 @@
   "settings.translate.title": "Setări traducere",
   "settings.tray.onclose": "Minimizează în zona de notificare la închidere",
   "settings.tray.show": "Afișează pictograma în zona de notificare",
+  "settings.update.title": "Actualizări",
   "settings.usage.cards.activeDays": "Zile active",
   "settings.usage.cards.cacheHitRate": "Rată de acces cache reușit",
   "settings.usage.cards.cacheObservedTokens": "Intrare observabilă: {{tokens}}",

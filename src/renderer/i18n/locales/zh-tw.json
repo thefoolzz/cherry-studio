@@ -4759,6 +4759,7 @@
   "settings.translate.title": "翻譯設定",
   "settings.tray.onclose": "關閉時最小化到系統匣",
   "settings.tray.show": "顯示系統匣圖示",
+  "settings.update.title": "更新",
   "settings.usage.cards.activeDays": "活躍天數",
   "settings.usage.cards.cacheHitRate": "快取命中率",
   "settings.usage.cards.cacheObservedTokens": "可觀測輸入：{{tokens}}",

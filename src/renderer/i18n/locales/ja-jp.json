@@ -4759,6 +4759,7 @@
   "settings.translate.title": "翻訳設定",
   "settings.tray.onclose": "閉じるときにトレイに最小化",
   "settings.tray.show": "トレイアイコンを表示",
+  "settings.update.title": "アップデート",
   "settings.usage.cards.activeDays": "アクティブ日数",
   "settings.usage.cards.cacheHitRate": "キャッシュヒット率",
   "settings.usage.cards.cacheObservedTokens": "観測可能な入力: {{tokens}}",

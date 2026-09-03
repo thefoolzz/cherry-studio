@@ -30,6 +30,18 @@ vi.mock('../ContextManagementSettings', () => ({
   )
 }))
 
+vi.mock('../UpdateSettings', () => ({
+  UpdateSettings: () => (
+    <section>
+      <h2>settings.update.title</h2>
+    </section>
+  )
+}))
+
+vi.mock('@renderer/ipc', () => ({
+  ipcApi: { request: vi.fn().mockResolvedValue({ version: '0.0.0-test', isPortable: false }) }
+}))
+
 vi.mock('@renderer/components/SettingsPrimitives', () => ({
   SettingDivider: () => <hr />,
   SettingGroup: ({ children }: { children: ReactNode }) => <section>{children}</section>,
@@ -47,7 +59,16 @@ vi.mock('@renderer/services/toast', () => ({
   toast: { error: vi.fn() }
 }))
 
+// The diagnostics dialog has its own suites and pulls in most of the UI kit; this page only
+// needs to know it is mounted.
+vi.mock('../DiagnosticBundleDialog', () => ({ default: () => null }))
+
 vi.mock('@cherrystudio/ui', () => ({
+  Button: ({ children, ...props }: HTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" {...props}>
+      {children}
+    </button>
+  ),
   Flex: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,
   InfoTooltip: () => null,
   Input: (props: InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
@@ -73,6 +94,7 @@ describe('GeneralSettings', () => {
     render(<GeneralSettings />)
 
     expect(screen.getAllByRole('heading').map((heading) => heading.textContent)).toEqual([
+      'settings.update.title',
       'settings.launch.title',
       'settings.proxy.mode.title',
       'settings.models.context_management.title',

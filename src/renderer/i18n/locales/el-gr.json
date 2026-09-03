@@ -4759,6 +4759,7 @@
   "settings.translate.title": "Ρυθμίσεις μετάφρασης",
   "settings.tray.onclose": "Ελαχιστοποίηση στην περιοχή ειδοποιήσεων κατά το κλείσιμο",
   "settings.tray.show": "Εμφάνιση εικονιδίου συνδρομής",
+  "settings.update.title": "Ενημερώσεις",
   "settings.usage.cards.activeDays": "Ενεργές ημέρες",
   "settings.usage.cards.cacheHitRate": "Ποσοστό επιτυχίας κρυφής μνήμης",
   "settings.usage.cards.cacheObservedTokens": "Παρατηρήσιμο εισόδου: {{tokens}}",

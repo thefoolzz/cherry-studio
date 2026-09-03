@@ -4759,6 +4759,7 @@
   "settings.translate.title": "Cài đặt dịch thuật",
   "settings.tray.onclose": "Thu nhỏ vào khay hệ thống khi đóng",
   "settings.tray.show": "Hiển thị biểu tượng khay",
+  "settings.update.title": "Cập nhật",
   "settings.usage.cards.activeDays": "Ngày hoạt động",
   "settings.usage.cards.cacheHitRate": "Tỷ lệ truy cập bộ nhớ đệm thành công",
   "settings.usage.cards.cacheObservedTokens": "Đầu vào có thể quan sát: {{tokens}}",

@@ -4759,6 +4759,7 @@
   "settings.translate.title": "Configuración de traducción",
   "settings.tray.onclose": "Minimizar a la bandeja al cerrar",
   "settings.tray.show": "Mostrar bandera del sistema",
+  "settings.update.title": "Actualizaciones",
   "settings.usage.cards.activeDays": "Días activos",
   "settings.usage.cards.cacheHitRate": "Tasa de aciertos de caché",
   "settings.usage.cards.cacheObservedTokens": "Entrada observable: {{tokens}}",

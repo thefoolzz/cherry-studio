@@ -4759,6 +4759,7 @@
   "settings.translate.title": "Paramètres de traduction",
   "settings.tray.onclose": "Minimiser dans la barre d'état système lors de la fermeture",
   "settings.tray.show": "Afficher l'icône dans la barre d'état système",
+  "settings.update.title": "Mises à jour",
   "settings.usage.cards.activeDays": "Jours actifs",
   "settings.usage.cards.cacheHitRate": "Taux de réussite du cache",
   "settings.usage.cards.cacheObservedTokens": "Entrée observable : {{tokens}}",

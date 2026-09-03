@@ -4759,6 +4759,7 @@
   "settings.translate.title": "翻译设置",
   "settings.tray.onclose": "关闭时最小化到托盘",
   "settings.tray.show": "显示托盘图标",
+  "settings.update.title": "更新",
   "settings.usage.cards.activeDays": "活跃天数",
   "settings.usage.cards.cacheHitRate": "缓存命中率",
   "settings.usage.cards.cacheObservedTokens": "可观测输入：{{tokens}}",

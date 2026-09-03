@@ -4759,6 +4759,7 @@
   "settings.translate.title": "Übersetzungseinstellungen",
   "settings.tray.onclose": "Beim Schließen in den Infobereich minimieren",
   "settings.tray.show": "Symbol im Infobereich anzeigen",
+  "settings.update.title": "Updates",
   "settings.usage.cards.activeDays": "Aktive Tage",
   "settings.usage.cards.cacheHitRate": "Cache-Trefferrate",
   "settings.usage.cards.cacheObservedTokens": "Beobachtbare Eingabe: {{tokens}}",
