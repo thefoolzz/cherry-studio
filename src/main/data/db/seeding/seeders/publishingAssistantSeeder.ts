@@ -1,3 +1,4 @@
+import { appStateTable } from '@data/db/schemas/appState'
 import { assistantTable } from '@data/db/schemas/assistant'
 import { assistantMcpServerTable } from '@data/db/schemas/assistantRelations'
 import { mcpServerTable } from '@data/db/schemas/mcpServer'
@@ -42,6 +43,24 @@ const PUBLISHING_ASSISTANT_SEED = {
   server: publishingServerPreset
 } as const
 
+/**
+ * Fingerprint of the prompt and settings this seeder last wrote. Re-seeding
+ * compares the stored assistant against it: an equal row was never touched by
+ * the user and can be refreshed, a different one is the user's own edit and must
+ * survive the upgrade.
+ */
+const SEEDED_FINGERPRINT_KEY = 'publishingAssistant:seededFingerprint'
+
+interface SeededFingerprint {
+  promptHash: string
+  settingsHash: string
+}
+
+const SEED_FINGERPRINT: SeededFingerprint = {
+  promptHash: hashObject(PUBLISHING_ASSISTANT_SEED.prompt),
+  settingsHash: hashObject({ ...PUBLISHING_ASSISTANT_SEED.settings })
+}
+
 export class PublishingAssistantSeeder implements ISeeder {
   readonly name = 'publishingAssistant'
   readonly description = 'Install the builtin WeChat publishing assistant and MCP server'
@@ -54,19 +73,13 @@ export class PublishingAssistantSeeder implements ISeeder {
   run(db: DbType): void {
     db.transaction((tx) => {
       const existing = tx
-        .select({ id: assistantTable.id })
+        .select({ id: assistantTable.id, prompt: assistantTable.prompt, settings: assistantTable.settings })
         .from(assistantTable)
         .where(eq(assistantTable.id, PUBLISHING_ASSISTANT_ID))
         .limit(1)
         .all()
       if (existing.length > 0) {
-        tx.update(assistantTable)
-          .set({
-            prompt: PUBLISHING_ASSISTANT_SEED.prompt,
-            settings: { ...PUBLISHING_ASSISTANT_SEED.settings }
-          })
-          .where(eq(assistantTable.id, PUBLISHING_ASSISTANT_ID))
-          .run()
+        this.refreshSeededFields(tx, existing[0])
         return
       }
 
@@ -112,7 +125,58 @@ export class PublishingAssistantSeeder implements ISeeder {
       tx.insert(assistantMcpServerTable)
         .values([{ assistantId: String(assistant.id), mcpServerId: server.id }])
         .run()
+      this.writeFingerprint(tx)
     })
+  }
+
+  /**
+   * Refresh the fields this seeder owns, skipping any the user has since edited.
+   *
+   * An install that predates fingerprinting has nothing to compare against, so it
+   * is refreshed once and fingerprinted from then on. A kept field keeps its old
+   * fingerprint too: advancing it would make the next upgrade mistake the user's
+   * text for ours and overwrite it after all.
+   */
+  private refreshSeededFields(
+    tx: DbType,
+    current: { prompt: string; settings: (typeof assistantTable.$inferSelect)['settings'] }
+  ): void {
+    const [row] = tx
+      .select({ value: appStateTable.value })
+      .from(appStateTable)
+      .where(eq(appStateTable.key, SEEDED_FINGERPRINT_KEY))
+      .limit(1)
+      .all()
+    const previous = row?.value as SeededFingerprint | undefined
+
+    const keepPrompt = previous !== undefined && hashObject(current.prompt) !== previous.promptHash
+    const keepSettings = previous !== undefined && hashObject(current.settings) !== previous.settingsHash
+
+    if (!keepPrompt || !keepSettings) {
+      tx.update(assistantTable)
+        .set({
+          ...(keepPrompt ? {} : { prompt: PUBLISHING_ASSISTANT_SEED.prompt }),
+          ...(keepSettings ? {} : { settings: { ...PUBLISHING_ASSISTANT_SEED.settings } })
+        })
+        .where(eq(assistantTable.id, PUBLISHING_ASSISTANT_ID))
+        .run()
+    }
+
+    this.writeFingerprint(tx, {
+      promptHash: keepPrompt && previous ? previous.promptHash : SEED_FINGERPRINT.promptHash,
+      settingsHash: keepSettings && previous ? previous.settingsHash : SEED_FINGERPRINT.settingsHash
+    })
+  }
+
+  private writeFingerprint(tx: DbType, value: SeededFingerprint = SEED_FINGERPRINT): void {
+    tx.insert(appStateTable)
+      .values({
+        key: SEEDED_FINGERPRINT_KEY,
+        value,
+        description: 'Prompt/settings this seeder last wrote; a mismatch means the user edited them'
+      })
+      .onConflictDoUpdate({ target: appStateTable.key, set: { value, updatedAt: Date.now() } })
+      .run()
   }
 
   private getNameForPreferredSystemLanguage(): string {
