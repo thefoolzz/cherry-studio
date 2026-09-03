@@ -68,4 +68,21 @@ describe('parsePublishingContentDraft', () => {
       pendingFacts: []
     })
   })
+
+  it.each([
+    ['single id', '[cite:889902ca-1]'],
+    ['chained ids', '[cite:889902ca-1][cite:889902ca-2]'],
+    ['comma list', '[cite: 889902ca-1, 889902ca-2]'],
+    ['unresolvable empty marker', '[cite:]']
+  ])('strips the assistant citation marker (%s) the platform cannot resolve', (_name, marker) => {
+    const draft = parsePublishingContentDraft(`# 指南\n\n内容更有机会进入引用范围。${marker}\n\n下一段。`)
+
+    expect(draft.markdown).toBe('内容更有机会进入引用范围。\n\n下一段。')
+  })
+
+  it('leaves a citation marker inside a code sample intact', () => {
+    const draft = parsePublishingContentDraft('# 指南\n\n用 `[cite:id]` 标注来源。')
+
+    expect(draft.markdown).toBe('用 `[cite:id]` 标注来源。')
+  })
 })
