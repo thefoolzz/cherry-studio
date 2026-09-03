@@ -39,32 +39,35 @@ const PUBLISHING_ASSISTANT_SEED = {
     '图片生成完成后继续输出完整文章，把每张图放在它实际服务的段落附近，使用 generate_image 返回的文件 ID 写成 Markdown 图片，例如 `![封面图](attachment://文件ID)`；不能只写占位语，也不能把所有图片堆在文章末尾。',
     '成稿使用一级标题作为文章标题；用户未指定平台时输出平台中立的母稿，指定平台时适配该平台。成稿回复直接给出可发布的 Markdown，不要包在 Markdown 代码块中，也不要先输出写作分析；模板任务则给出精简预览或保存结果。用户明确确认后，才根据所选平台账号创建对应平台草稿；不要群发、定时发布或替用户执行正式发布。'
   ].join('\n'),
-  description: '将 Markdown 内容整理并创建为微信公众号草稿',
+  description: '把对话内容写成可发布的文章，并创建对应平台草稿',
+  // Both spellings live in the seed so a rename changes `version` and re-seeds.
+  names: { zh: '文章助手', default: 'Article Assistant' },
   settings: { ...DEFAULT_ASSISTANT_SETTINGS, enableGenerateImage: true, enableWebSearch: true },
   server: publishingServerPreset
 } as const
 
 /**
- * Fingerprint of the prompt and settings this seeder last wrote. Re-seeding
- * compares the stored assistant against it: an equal row was never touched by
- * the user and can be refreshed, a different one is the user's own edit and must
- * survive the upgrade.
+ * Fingerprint of the fields this seeder last wrote. Re-seeding compares the
+ * stored assistant against it: an equal field was never touched by the user and
+ * can be refreshed, a different one is the user's own edit and must survive the
+ * upgrade.
  */
 const SEEDED_FINGERPRINT_KEY = 'publishingAssistant:seededFingerprint'
 
 interface SeededFingerprint {
   promptHash: string
   settingsHash: string
+  nameHash: string
+  descriptionHash: string
 }
 
-const SEED_FINGERPRINT: SeededFingerprint = {
-  promptHash: hashObject(PUBLISHING_ASSISTANT_SEED.prompt),
-  settingsHash: hashObject({ ...PUBLISHING_ASSISTANT_SEED.settings })
-}
+/** A field with no stored hash has never been compared, so it is refreshed once and tracked after. */
+const isUserEdited = (value: unknown, storedHash: string | undefined): boolean =>
+  storedHash !== undefined && hashObject(value) !== storedHash
 
 export class PublishingAssistantSeeder implements ISeeder {
   readonly name = 'publishingAssistant'
-  readonly description = 'Install the builtin WeChat publishing assistant and MCP server'
+  readonly description = 'Install the builtin article publishing assistant and MCP server'
   readonly version: string
 
   constructor() {
@@ -74,7 +77,13 @@ export class PublishingAssistantSeeder implements ISeeder {
   run(db: DbType): void {
     db.transaction((tx) => {
       const existing = tx
-        .select({ id: assistantTable.id, prompt: assistantTable.prompt, settings: assistantTable.settings })
+        .select({
+          id: assistantTable.id,
+          name: assistantTable.name,
+          prompt: assistantTable.prompt,
+          description: assistantTable.description,
+          settings: assistantTable.settings
+        })
         .from(assistantTable)
         .where(eq(assistantTable.id, PUBLISHING_ASSISTANT_ID))
         .limit(1)
@@ -108,12 +117,13 @@ export class PublishingAssistantSeeder implements ISeeder {
         server = inserted
       }
 
+      const name = this.getNameForPreferredSystemLanguage()
       const assistant = insertWithOrderKey(
         tx,
         assistantTable,
         {
           id: PUBLISHING_ASSISTANT_ID,
-          name: this.getNameForPreferredSystemLanguage(),
+          name,
           emoji: PUBLISHING_ASSISTANT_SEED.emoji,
           prompt: PUBLISHING_ASSISTANT_SEED.prompt,
           description: PUBLISHING_ASSISTANT_SEED.description,
@@ -126,21 +136,26 @@ export class PublishingAssistantSeeder implements ISeeder {
       tx.insert(assistantMcpServerTable)
         .values([{ assistantId: String(assistant.id), mcpServerId: server.id }])
         .run()
-      this.writeFingerprint(tx)
+      this.writeFingerprint(tx, this.fingerprintFor(name))
     })
   }
 
   /**
    * Refresh the fields this seeder owns, skipping any the user has since edited.
    *
-   * An install that predates fingerprinting has nothing to compare against, so it
-   * is refreshed once and fingerprinted from then on. A kept field keeps its old
-   * fingerprint too: advancing it would make the next upgrade mistake the user's
-   * text for ours and overwrite it after all.
+   * A field with no stored hash — an install predating fingerprinting, or one
+   * whose fingerprint predates that field — is refreshed once and tracked from
+   * then on. A kept field keeps its old fingerprint too: advancing it would make
+   * the next upgrade mistake the user's text for ours and overwrite it after all.
    */
   private refreshSeededFields(
     tx: DbType,
-    current: { prompt: string; settings: (typeof assistantTable.$inferSelect)['settings'] }
+    current: {
+      name: string
+      prompt: string
+      description: string | null
+      settings: (typeof assistantTable.$inferSelect)['settings']
+    }
   ): void {
     const [row] = tx
       .select({ value: appStateTable.value })
@@ -148,45 +163,61 @@ export class PublishingAssistantSeeder implements ISeeder {
       .where(eq(appStateTable.key, SEEDED_FINGERPRINT_KEY))
       .limit(1)
       .all()
-    const previous = row?.value as SeededFingerprint | undefined
+    const previous = row?.value as Partial<SeededFingerprint> | undefined
 
-    const keepPrompt = previous !== undefined && hashObject(current.prompt) !== previous.promptHash
-    const keepSettings = previous !== undefined && hashObject(current.settings) !== previous.settingsHash
+    const name = this.getNameForPreferredSystemLanguage()
+    const seeded = this.fingerprintFor(name)
+    const keep = {
+      name: isUserEdited(current.name, previous?.nameHash),
+      prompt: isUserEdited(current.prompt, previous?.promptHash),
+      description: isUserEdited(current.description, previous?.descriptionHash),
+      settings: isUserEdited(current.settings, previous?.settingsHash)
+    }
 
-    if (!keepPrompt || !keepSettings) {
-      tx.update(assistantTable)
-        .set({
-          ...(keepPrompt ? {} : { prompt: PUBLISHING_ASSISTANT_SEED.prompt }),
-          ...(keepSettings ? {} : { settings: { ...PUBLISHING_ASSISTANT_SEED.settings } })
-        })
-        .where(eq(assistantTable.id, PUBLISHING_ASSISTANT_ID))
-        .run()
+    const refreshed = {
+      ...(keep.name ? {} : { name }),
+      ...(keep.prompt ? {} : { prompt: PUBLISHING_ASSISTANT_SEED.prompt }),
+      ...(keep.description ? {} : { description: PUBLISHING_ASSISTANT_SEED.description }),
+      ...(keep.settings ? {} : { settings: { ...PUBLISHING_ASSISTANT_SEED.settings } })
+    }
+    if (Object.keys(refreshed).length > 0) {
+      tx.update(assistantTable).set(refreshed).where(eq(assistantTable.id, PUBLISHING_ASSISTANT_ID)).run()
     }
 
     this.writeFingerprint(tx, {
-      promptHash: keepPrompt && previous ? previous.promptHash : SEED_FINGERPRINT.promptHash,
-      settingsHash: keepSettings && previous ? previous.settingsHash : SEED_FINGERPRINT.settingsHash
+      nameHash: (keep.name ? previous?.nameHash : undefined) ?? seeded.nameHash,
+      promptHash: (keep.prompt ? previous?.promptHash : undefined) ?? seeded.promptHash,
+      descriptionHash: (keep.description ? previous?.descriptionHash : undefined) ?? seeded.descriptionHash,
+      settingsHash: (keep.settings ? previous?.settingsHash : undefined) ?? seeded.settingsHash
     })
   }
 
-  private writeFingerprint(tx: DbType, value: SeededFingerprint = SEED_FINGERPRINT): void {
+  private fingerprintFor(name: string): SeededFingerprint {
+    return {
+      nameHash: hashObject(name),
+      promptHash: hashObject(PUBLISHING_ASSISTANT_SEED.prompt),
+      descriptionHash: hashObject(PUBLISHING_ASSISTANT_SEED.description),
+      settingsHash: hashObject({ ...PUBLISHING_ASSISTANT_SEED.settings })
+    }
+  }
+
+  private writeFingerprint(tx: DbType, value: SeededFingerprint): void {
     tx.insert(appStateTable)
       .values({
         key: SEEDED_FINGERPRINT_KEY,
         value,
-        description: 'Prompt/settings this seeder last wrote; a mismatch means the user edited them'
+        description: 'Fields this seeder last wrote; a mismatch means the user edited them'
       })
       .onConflictDoUpdate({ target: appStateTable.key, set: { value, updatedAt: Date.now() } })
       .run()
   }
 
   private getNameForPreferredSystemLanguage(): string {
+    const { zh, default: fallback } = PUBLISHING_ASSISTANT_SEED.names
     try {
-      return app.getPreferredSystemLanguages()[0]?.toLowerCase().startsWith('zh')
-        ? '公众号发布助手'
-        : 'WeChat Publishing Assistant'
+      return app.getPreferredSystemLanguages()[0]?.toLowerCase().startsWith('zh') ? zh : fallback
     } catch {
-      return 'WeChat Publishing Assistant'
+      return fallback
     }
   }
 }

@@ -116,4 +116,42 @@ describe('PublishingAssistantSeeder', () => {
     seeder.run(dbh.db)
     expect((await readAssistant()).prompt).toBe('这一次要保住')
   })
+
+  it('renames an install whose fingerprint predates the name field', async () => {
+    const seeder = new PublishingAssistantSeeder()
+    seeder.run(dbh.db)
+    const seeded = await readAssistant()
+
+    // The state the release before the rename leaves: the old name, and a
+    // fingerprint that tracked only prompt and settings.
+    await dbh.db
+      .update(assistantTable)
+      .set({ name: '公众号发布助手', description: '将 Markdown 内容整理并创建为微信公众号草稿' })
+      .where(eq(assistantTable.id, PUBLISHING_ASSISTANT_ID))
+    const { promptHash, settingsHash } = (await readFingerprint())!
+    await dbh.db
+      .update(appStateTable)
+      .set({ value: { promptHash, settingsHash } })
+      .where(eq(appStateTable.key, FINGERPRINT_KEY))
+
+    seeder.run(dbh.db)
+
+    const upgraded = await readAssistant()
+    expect(upgraded.name).toBe(seeded.name)
+    expect(upgraded.description).toBe(seeded.description)
+  })
+
+  it('keeps a name the user chose', async () => {
+    const seeder = new PublishingAssistantSeeder()
+    seeder.run(dbh.db)
+    await dbh.db
+      .update(assistantTable)
+      .set({ name: '我的写稿助手' })
+      .where(eq(assistantTable.id, PUBLISHING_ASSISTANT_ID))
+
+    seeder.run(dbh.db)
+    seeder.run(dbh.db)
+
+    expect((await readAssistant()).name).toBe('我的写稿助手')
+  })
 })
