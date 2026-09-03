@@ -12,8 +12,7 @@ import {
   Palette,
   Rocket,
   ScanSearch,
-  Settings,
-  Sparkles
+  Settings
 } from 'lucide-react'
 
 export type IconComponent = React.FC<{ size?: number; strokeWidth?: number; className?: string }>
@@ -32,7 +31,6 @@ export const ROUTE_ICONS: Record<string, IconComponent> = {
   '/app/files': Folder,
   '/app/code': Code,
   '/app/notes': NotepadText,
-  '/app/release-notes': Sparkles,
   '/settings': Settings
 }
 

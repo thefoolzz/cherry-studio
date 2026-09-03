@@ -42,7 +42,17 @@ function ChatTableRenderer(props: MarkdownRendererProps<'table'>) {
   return <Table {...(props as ComponentProps<typeof Table>)} blockId={blockId} />
 }
 
+const ATTACHMENT_SRC_PREFIX = 'attachment://'
+
 function ChatImageRenderer(props: MarkdownRendererProps<'img'>) {
+  const { attachmentFileUrls } = useChatMarkdownRenderContext()
+  const { src } = props
+  if (typeof src === 'string' && src.startsWith(ATTACHMENT_SRC_PREFIX)) {
+    const resolved = attachmentFileUrls?.get(src.slice(ATTACHMENT_SRC_PREFIX.length))
+    // The parts renderer resolves file ids asynchronously; render nothing rather than a broken image.
+    if (!resolved) return null
+    return <ImageViewer style={IMAGE_STYLE} {...(props as ImageViewerProps)} src={resolved} />
+  }
   return <ImageViewer style={IMAGE_STYLE} {...(props as ImageViewerProps)} />
 }
 

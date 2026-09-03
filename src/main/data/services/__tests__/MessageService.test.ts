@@ -620,6 +620,80 @@ describe('MessageService', () => {
     })
   })
 
+  describe('getBranchMessages — pagination', () => {
+    const chainIds = Array.from({ length: 8 }, (_, index) => `m-${index + 1}`)
+
+    const seedChain = async () => {
+      await dbh.db.insert(topicTable).values({ id: 'topic-page', activeNodeId: chainIds.at(-1)!, orderKey: 'p0' })
+      await dbh.db.insert(messageTable).values(
+        withRoot(
+          'topic-page',
+          chainIds.map((id, index) => ({
+            id,
+            parentId: index === 0 ? null : chainIds[index - 1],
+            topicId: 'topic-page',
+            role: index % 2 === 0 ? ('user' as const) : ('assistant' as const),
+            data: mainText(id),
+            status: 'success' as const,
+            siblingsGroupId: 0,
+            createdAt: 10 + index,
+            updatedAt: 10 + index
+          }))
+        )
+      )
+    }
+
+    it('returns the newest window and a cursor naming the previous page boundary', async () => {
+      await seedChain()
+
+      const page = messageService.getBranchMessages('topic-page', { limit: 3, includeSiblings: false })
+
+      expect(page.items.map((item) => item.message.id)).toEqual(['m-6', 'm-7', 'm-8'])
+      expect(page.nextCursor).toBe('m-6')
+      expect(page.activeNodeId).toBe('m-8')
+    })
+
+    it('walks the cursor back over the whole branch without gaps or repeats', async () => {
+      await seedChain()
+
+      const pages: string[][] = []
+      let cursor: string | undefined
+      do {
+        const page = messageService.getBranchMessages('topic-page', { limit: 3, cursor, includeSiblings: false })
+        pages.unshift(page.items.map((item) => item.message.id))
+        cursor = page.nextCursor
+      } while (cursor)
+
+      expect(pages).toEqual([
+        ['m-1', 'm-2'],
+        ['m-3', 'm-4', 'm-5'],
+        ['m-6', 'm-7', 'm-8']
+      ])
+      expect(pages.flat()).toEqual(chainIds)
+    })
+
+    it('omits the cursor when the whole branch fits in one page', async () => {
+      await seedChain()
+
+      const page = messageService.getBranchMessages('topic-page', { limit: 50, includeSiblings: false })
+
+      expect(page.items.map((item) => item.message.id)).toEqual(chainIds)
+      expect(page.nextCursor).toBeUndefined()
+    })
+
+    it('rejects a cursor that is not on the branch', async () => {
+      await seedChain()
+
+      let err: unknown
+      try {
+        messageService.getBranchMessages('topic-page', { limit: 3, cursor: 'm-not-on-branch' })
+      } catch (e) {
+        err = e
+      }
+      expect(err).toMatchObject({ code: ErrorCode.NOT_FOUND })
+    })
+  })
+
   describe('search', () => {
     it('searches v2 parts text and returns message snippets', async () => {
       await dbh.db.insert(topicTable).values({ id: 'topic-search', activeNodeId: 'm-search-1', orderKey: 's0' })

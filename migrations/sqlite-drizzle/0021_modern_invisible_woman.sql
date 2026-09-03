@@ -1,0 +1,1 @@
+CREATE INDEX `message_topic_parent_siblings_idx` ON `message` (`topic_id`,`parent_id`,`siblings_group_id`);

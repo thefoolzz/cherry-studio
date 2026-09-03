@@ -102,4 +102,39 @@ describe('PublishingServer writing templates', () => {
     expect(result).toMatchObject({ success: true, templateId: saved.id, contentType: 'case study' })
     expect(result).not.toHaveProperty('markdown')
   })
+
+  it('measures a finished draft against the length the user asked for', async () => {
+    const result = parseResult(
+      await callTool(new PublishingServer(), 'review_article', {
+        markdown: '# 标题\n\n真正的问题在别处。[cite:abc-1]\n\n真正的答案只有一个。',
+        targetCharacters: 100
+      })
+    )
+
+    expect(result).toMatchObject({
+      success: true,
+      targetCharacters: 100,
+      deltaFromTarget: result.characterCount - 100,
+      paragraphCount: 2,
+      aiTone: { cadences: { '真正的……': 2 } },
+      citationMarkerCount: 1
+    })
+    // The model already has its own draft; echoing it back only burns context.
+    expect(result).not.toHaveProperty('markdown')
+  })
+
+  it('accepts targetCharacters 0 as "no length given" instead of failing the call', async () => {
+    // Observed in the running app: the model fills the optional number with 0, and
+    // a rejected call costs a retry that re-sends the entire draft.
+    const result = parseResult(
+      await callTool(new PublishingServer(), 'review_article', {
+        markdown: '# 标题\n\n正文内容。',
+        targetCharacters: 0
+      })
+    )
+
+    expect(result.success).toBe(true)
+    expect(result).not.toHaveProperty('targetCharacters')
+    expect(result).not.toHaveProperty('deltaFromTarget')
+  })
 })

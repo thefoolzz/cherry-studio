@@ -1,6 +1,7 @@
 import { application } from '@application'
 import { publishingDataService } from '@data/services/PublishingDataService'
 import { loggerService } from '@logger'
+import { measureArticle } from '@main/services/publishing/articleMetrics'
 import { fetchWebSearchContent } from '@main/services/webSearch'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
@@ -29,6 +30,12 @@ const PREPARE_SCHEMA = z.strictObject({
 })
 const TEMPLATE_ID_SCHEMA = z.strictObject({ templateId: z.string().min(1) })
 const READ_ARTICLE_SOURCE_SCHEMA = z.strictObject({ url: z.url() })
+const REVIEW_ARTICLE_SCHEMA = z.strictObject({
+  markdown: z.string().min(1),
+  // Models fill an optional number with 0 rather than omitting it, and rejecting
+  // that costs a retry that re-sends the whole draft. Treat 0 as "no target".
+  targetCharacters: z.number().int().nonnegative().optional()
+})
 const SAVE_TEMPLATE_SCHEMA = z.strictObject({
   name: z.string().trim().min(1).max(200),
   description: z.string().trim().min(1).max(1000),
@@ -52,6 +59,22 @@ const TOOLS: Tool[] = [
       type: 'object',
       properties: { url: { type: 'string', format: 'uri', description: 'Public article URL to read.' } },
       required: ['url']
+    }
+  },
+  {
+    name: 'review_article',
+    description:
+      'Measure a finished draft before delivering it: prose character count (Markdown syntax excluded, title and pre-publish checklist removed), paragraph count and longest paragraph, the heading outline, repeated paragraph openings, lines whose `[待补充：…]` placeholder will delete the whole sentence at publish time, and how many `[cite:…]` markers will be stripped. `aiTone` reports the machine-written tells: stock cadences, discourse-connective density per 1000 characters (edited Chinese feature prose runs about 5-10, unedited model prose 15-25), empty emphasis, corporate-announcement verbs, and whole sentences built from three balanced short clauses, quoted so a real enumeration can be told from a cadence. The listed patterns are samples, not the full set. Read the numbers, then revise; do not report them to the user.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        markdown: { type: 'string', description: 'The complete draft, exactly as it would be delivered.' },
+        targetCharacters: {
+          type: 'number',
+          description: 'Character count the user asked for. Omit it, or pass 0, when they named no length.'
+        }
+      },
+      required: ['markdown']
     }
   },
   {
@@ -259,6 +282,10 @@ export class PublishingServer {
               markdown: article.content.slice(0, maxCharacters),
               truncated: article.content.length > maxCharacters
             })
+          }
+          case 'review_article': {
+            const input = REVIEW_ARTICLE_SCHEMA.parse(args)
+            return result({ success: true, ...measureArticle(input.markdown, input.targetCharacters || undefined) })
           }
           case 'list_writing_templates': {
             const templates = publishingDataService.listTemplates({ limit: 200 }).items

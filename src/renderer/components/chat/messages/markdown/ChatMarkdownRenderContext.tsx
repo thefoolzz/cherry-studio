@@ -6,6 +6,8 @@ import type { InlineHtmlPreviewMode } from './ChatMarkdown'
 interface ChatMarkdownRenderContextValue {
   blockId: string
   citationRegistry: ReadonlyMap<number, Citation>
+  /** Generated-image file id → loadable object URL, resolved asynchronously by the parts renderer. */
+  attachmentFileUrls?: ReadonlyMap<string, string>
   inlineHtmlPreviewMode?: InlineHtmlPreviewMode
   isStreaming: boolean
 }
@@ -20,12 +22,13 @@ export function ChatMarkdownRenderProvider({
   blockId,
   children,
   citationRegistry,
+  attachmentFileUrls,
   inlineHtmlPreviewMode,
   isStreaming
 }: ChatMarkdownRenderProviderProps) {
   const value = useMemo(
-    () => ({ blockId, citationRegistry, inlineHtmlPreviewMode, isStreaming }),
-    [blockId, citationRegistry, inlineHtmlPreviewMode, isStreaming]
+    () => ({ blockId, citationRegistry, attachmentFileUrls, inlineHtmlPreviewMode, isStreaming }),
+    [blockId, citationRegistry, attachmentFileUrls, inlineHtmlPreviewMode, isStreaming]
   )
 
   return <ChatMarkdownRenderContext value={value}>{children}</ChatMarkdownRenderContext>

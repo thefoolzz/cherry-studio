@@ -151,4 +151,26 @@ describe('Markdown sanitize schema', () => {
     expect(output).toContain('class="markdown-alert-title"')
     expect(output).not.toContain('injected')
   })
+
+  it('keeps attachment image references while still rejecting unsafe src protocols', async () => {
+    const { sanitize, harden } = defaultRehypePlugins as Record<string, any>
+    const [sanitizeFn, schema] = sanitize
+    const [hardenFn, hardenOptions] = harden
+    const output = String(
+      await unified()
+        .use(rehypeParse, { fragment: true })
+        .use(sanitizeFn, createMarkdownSanitizeSchema(schema))
+        .use(hardenFn, hardenOptions)
+        .use(rehypeStringify)
+        .process(
+          '<img src="attachment://image-1" alt="cover">' +
+            '<img src="javascript:alert(1)" alt="unsafe">' +
+            '<img src="file:///etc/passwd" alt="local">'
+        )
+    )
+
+    expect(output).toContain('src="attachment://image-1"')
+    expect(output).not.toContain('javascript:')
+    expect(output).not.toContain('/etc/passwd')
+  })
 })

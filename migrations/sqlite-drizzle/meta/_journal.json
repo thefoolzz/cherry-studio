@@ -147,6 +147,13 @@
       "tag": "0020_cold_moon_knight",
       "version": "6",
       "when": 1788239870242
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1788414639888,
+      "tag": "0021_modern_invisible_woman",
+      "breakpoints": true
     }
   ],
   "version": "7"

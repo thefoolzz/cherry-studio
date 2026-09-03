@@ -16,6 +16,8 @@ const mockMainTextRender = vi.hoisted(() => vi.fn())
 const mockGetPhysicalPath = vi.hoisted(() => vi.fn())
 const mockGetImageBlobFromSource = vi.hoisted(() => vi.fn())
 const mockBlobToDataUrl = vi.hoisted(() => vi.fn())
+const mockCreateObjectURL = vi.hoisted(() => vi.fn())
+const mockRevokeObjectURL = vi.hoisted(() => vi.fn())
 const mockReadText = vi.hoisted(() => vi.fn())
 const mockUsePlaceholderElapsedMs = vi.hoisted(() => vi.fn(() => 1000))
 const mockToolBlockGroupRender = vi.hoisted(() => vi.fn())
@@ -124,8 +126,11 @@ vi.mock('@iconify/react', () => ({
 
 vi.mock('@renderer/components/chat/messages/markdown/ChatMarkdown', () => ({
   __esModule: true,
-  default: ({ block, postProcess }: any) => (
-    <div data-testid="mock-markdown" data-status={block.status}>
+  default: ({ block, postProcess, attachmentFileUrls }: any) => (
+    <div
+      data-testid="mock-markdown"
+      data-status={block.status}
+      data-attachment-urls={JSON.stringify([...(attachmentFileUrls ?? new Map())])}>
       {postProcess ? postProcess(block.content) : block.content}
     </div>
   ),
@@ -495,6 +500,11 @@ describe('MessagePartsRenderer', () => {
     mockGetPhysicalPath.mockReset()
     mockGetImageBlobFromSource.mockReset()
     mockBlobToDataUrl.mockReset()
+    mockCreateObjectURL.mockReset()
+    mockCreateObjectURL.mockReturnValue('blob:object-url')
+    mockRevokeObjectURL.mockReset()
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: mockCreateObjectURL })
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: mockRevokeObjectURL })
     mockReadText.mockReset()
     mockReadText.mockResolvedValue('Pasted text preview')
     Object.defineProperty(window, 'api', {
@@ -616,15 +626,19 @@ describe('MessagePartsRenderer', () => {
     it('resolves images referenced by a text-only follow-up message', async () => {
       mockGetPhysicalPath.mockResolvedValue('/tmp/generated-image.png')
       mockGetImageBlobFromSource.mockResolvedValue(new Blob(['image'], { type: 'image/png' }))
-      mockBlobToDataUrl.mockResolvedValue('data:image/png;base64,aW1hZ2U=')
 
       renderParts([
         { type: 'text', text: '![正文配图](attachment://generated-image-id)' }
       ] as unknown as CherryMessagePart[])
 
       await waitFor(() =>
-        expect(screen.getByTestId('mock-markdown')).toHaveTextContent('![正文配图](data:image/png;base64,aW1hZ2U=)')
+        expect(screen.getByTestId('mock-markdown')).toHaveAttribute(
+          'data-attachment-urls',
+          JSON.stringify([['generated-image-id', 'blob:object-url']])
+        )
       )
+      // The parser must never see the image bytes, so the reference stays in the markdown source.
+      expect(screen.getByTestId('mock-markdown')).toHaveTextContent('![正文配图](attachment://generated-image-id)')
       expect(mockGetPhysicalPath).toHaveBeenCalledWith({ id: 'generated-image-id' })
       expect(mockGetImageBlobFromSource).toHaveBeenCalledWith('file:///tmp/generated-image.png')
     })

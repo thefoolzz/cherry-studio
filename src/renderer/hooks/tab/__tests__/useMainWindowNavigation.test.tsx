@@ -88,13 +88,13 @@ describe('useMainWindowNavigation', () => {
     window.dispatchEvent(
       new CustomEvent(OPEN_MAIN_ROUTE_EVENT, {
         cancelable: true,
-        detail: { path: '/settings/about' }
+        detail: { path: '/settings/general' }
       })
     )
 
     expect(mocks.openTab).not.toHaveBeenCalled()
     expect(mocks.updateTab).toHaveBeenCalledWith('settings-1', {
-      url: '/settings/about',
+      url: '/settings/general',
       title: 'settings.title',
       lastAccessTime: expect.any(Number)
     })
@@ -114,7 +114,7 @@ describe('useMainWindowNavigation', () => {
     window.dispatchEvent(
       new CustomEvent(OPEN_MAIN_ROUTE_EVENT, {
         cancelable: true,
-        detail: { path: '/settings/about' }
+        detail: { path: '/settings/general' }
       })
     )
 
@@ -125,7 +125,7 @@ describe('useMainWindowNavigation', () => {
     rerender(<MainWindowNavigationHarness />)
 
     expect(mocks.updateTab).toHaveBeenCalledWith('settings-1', {
-      url: '/settings/about',
+      url: '/settings/general',
       title: 'settings.title',
       lastAccessTime: expect.any(Number)
     })
@@ -133,13 +133,13 @@ describe('useMainWindowNavigation', () => {
   })
 
   it('acknowledges main-window init data so it is not replayed after remount', () => {
-    mocks.initData = { kind: 'navigation', to: '/settings/about', requestId: 1 }
+    mocks.initData = { kind: 'navigation', to: '/settings/general', requestId: 1 }
     mocks.ipcRequest.mockImplementation((channel: string) => {
       if (channel === 'navigation.ack_open_route') mocks.initData = null
     })
     const { unmount } = render(<MainWindowNavigationHarness />)
 
-    expect(mocks.openTab).toHaveBeenCalledWith('/settings/about', { title: 'settings.title' })
+    expect(mocks.openTab).toHaveBeenCalledWith('/settings/general', { title: 'settings.title' })
     expect(mocks.ipcRequest).toHaveBeenCalledWith('navigation.ack_open_route', { requestId: 1 })
 
     unmount()
@@ -186,11 +186,11 @@ describe('useMainWindowNavigation', () => {
     mocks.tabs = [{ id: 'settings-1', type: 'route', url: '/settings/provider', title: 'settings.title' }]
     render(<MainWindowNavigationHarness />)
 
-    mocks.ipcListeners.get('navigation.open_route_requested')?.({ to: '/settings/about' })
+    mocks.ipcListeners.get('navigation.open_route_requested')?.({ to: '/settings/general' })
 
     expect(mocks.openTab).not.toHaveBeenCalled()
     expect(mocks.updateTab).toHaveBeenCalledWith('settings-1', {
-      url: '/settings/about',
+      url: '/settings/general',
       title: 'settings.title',
       lastAccessTime: expect.any(Number)
     })
@@ -204,12 +204,12 @@ describe('useMainWindowNavigation', () => {
     rerender(<MainWindowNavigationHarness />)
 
     mocks.tabs = [{ id: 'settings-1', type: 'route', url: '/settings/provider', title: 'settings.title' }]
-    mocks.initData = { kind: 'navigation', to: '/settings/about', requestId: 2 }
+    mocks.initData = { kind: 'navigation', to: '/settings/general', requestId: 2 }
     rerender(<MainWindowNavigationHarness />)
 
     expect(mocks.openTab).toHaveBeenCalledWith('/settings/provider', { title: 'settings.title' })
     expect(mocks.updateTab).toHaveBeenCalledWith('settings-1', {
-      url: '/settings/about',
+      url: '/settings/general',
       title: 'settings.title',
       lastAccessTime: expect.any(Number)
     })

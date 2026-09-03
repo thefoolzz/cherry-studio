@@ -42,11 +42,15 @@ export function blobToDataUrl(blob: Blob): Promise<string> {
   })
 }
 
+// `file://` is not fetchable from the renderer, and html-to-image's `cacheBust` appends a query string
+// that makes a `blob:` url invalid — both have to be inlined before a capture and restored after.
+const CAPTURE_INLINE_SRC_PREFIXES = ['file://', 'blob:']
+
 async function inlineLocalImageSources(root: HTMLElement): Promise<() => void> {
   const images = [
     ...(root instanceof HTMLImageElement ? [root] : []),
     ...root.querySelectorAll<HTMLImageElement>('img')
-  ].filter((image) => image.src.startsWith('file://'))
+  ].filter((image) => CAPTURE_INLINE_SRC_PREFIXES.some((prefix) => image.src.startsWith(prefix)))
 
   const originalSources = images.map((image) => ({
     image,

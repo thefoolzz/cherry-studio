@@ -7,28 +7,17 @@ import { WindowType } from '@main/core/window/types'
 import { regionService } from '@main/services/RegionService'
 import { generateUserAgent, getClientId } from '@main/utils/systemInfo'
 import type { RetryPolicy } from '@shared/data/api/schemas/jobs'
-import { UpgradeChannel } from '@shared/data/preference/preferenceTypes'
 import { APP_NAME } from '@shared/utils/constants'
-import {
-  hasMultiLanguageReleaseNotes,
-  localizeReleaseNotes,
-  mergeReleaseHistory,
-  parseReleaseHistory,
-  type ReleaseNotesEntry
-} from '@shared/utils/releaseNotes'
+import { hasMultiLanguageReleaseNotes, localizeReleaseNotes } from '@shared/utils/releaseNotes'
 import type { ProgressInfo, UpdateInfo } from 'builder-util-runtime'
 import { CancellationToken } from 'builder-util-runtime'
-import { app, net } from 'electron'
+import { app } from 'electron'
 import type { Logger, NsisUpdater, UpdateCheckResult } from 'electron-updater'
-import { AppUpdater, autoUpdater } from 'electron-updater'
+import { autoUpdater } from 'electron-updater'
 
 const logger = loggerService.withContext('AppUpdaterService')
 
 type ReleaseRegion = 'cn' | 'global'
-
-const RELEASE_HISTORY_URL = 'https://github.com/thefoolzz/cherry-studio/releases/latest/download/release-history.json'
-const RELEASE_HISTORY_TIMEOUT_MS = 10_000
-const RELEASE_HISTORY_MAX_BYTES = 1024 * 1024
 
 function getUpdateHeaders(region: ReleaseRegion) {
   return {
@@ -39,20 +28,6 @@ function getUpdateHeaders(region: ReleaseRegion) {
     'App-Version': `v${app.getVersion()}`,
     OS: process.platform,
     'X-Region': region
-  }
-}
-
-class ReleaseNotesUpdater extends AppUpdater {
-  constructor() {
-    super(undefined)
-  }
-
-  protected doDownloadUpdate(): Promise<string[]> {
-    return Promise.reject(new Error('Release-notes updater cannot download updates'))
-  }
-
-  quitAndInstall(): never {
-    throw new Error('Release-notes updater cannot install updates')
   }
 }
 
@@ -103,18 +78,6 @@ export class AppUpdaterService extends BaseService {
     if (isWin) {
       ;(autoUpdater as NsisUpdater).installDirectory = application.getPath('app.install')
     }
-
-    // Cancel an in-flight download when the test plan or channel changes — the
-    // download targets the previously selected channel. The v2 settings UI
-    // writes these preferences directly (no IPC), so react to the change here
-    // rather than in a now-removed `App_SetTestPlan`/`App_SetTestChannel` handler.
-    this.registerDisposable(
-      application
-        .get('PreferenceService')
-        .subscribeMultipleChanges(['app.dist.test_plan.enabled', 'app.dist.test_plan.channel'], () =>
-          this.cancelDownload()
-        )
-    )
 
     // Stop the scheduled check when this service stops (it depends on
     // SchedulerService, so SchedulerService is still alive at this point).
@@ -173,106 +136,31 @@ export class AppUpdaterService extends BaseService {
 
   private async getUpdateRequest() {
     const currentVersion = app.getVersion()
-    const testPlan = application.get('PreferenceService').get('app.dist.test_plan.enabled')
-    const requestedChannel = testPlan
-      ? application.get('PreferenceService').get('app.dist.test_plan.channel') || UpgradeChannel.RC
-      : UpgradeChannel.LATEST
-
     const ipCountry = await regionService.getCountry()
     const region: ReleaseRegion = ipCountry.toLowerCase() === 'cn' ? 'cn' : 'global'
 
     const updateHeaders = getUpdateHeaders(region)
 
-    return { currentVersion, ipCountry, region, requestedChannel, testPlan, updateHeaders }
+    return { currentVersion, ipCountry, region, updateHeaders }
   }
 
   private async configureUpdaterForCheck() {
-    const { currentVersion, ipCountry, region, requestedChannel, testPlan, updateHeaders } =
-      await this.getUpdateRequest()
+    const { currentVersion, ipCountry, region, updateHeaders } = await this.getUpdateRequest()
 
     autoUpdater.requestHeaders = {
       ...autoUpdater.requestHeaders,
       ...updateHeaders
     }
 
-    logger.info(
-      `Using managed update feed for version ${currentVersion}, testPlan: ${testPlan}, channel: ${requestedChannel}, region: ${region} (IP country: ${ipCountry})`
-    )
-    autoUpdater.channel = requestedChannel
+    logger.info(`Using managed update feed for version ${currentVersion}, region: ${region} (IP country: ${ipCountry})`)
+    // Pinned to stable, overriding the channel electron-builder wrote into the packaged
+    // app-update.yml: it also pulls anyone still on a prerelease build back onto latest.
+    autoUpdater.channel = 'latest'
 
     // disable downgrade after change the channel
     autoUpdater.allowDowngrade = false
     // Keep differential downloads disabled for the current release artifacts.
     autoUpdater.disableDifferentialDownload = true
-  }
-
-  private async fetchReleaseHistory(): Promise<ReleaseNotesEntry[] | null> {
-    try {
-      const { updateHeaders } = await this.getUpdateRequest()
-      const response = await net.fetch(RELEASE_HISTORY_URL, {
-        headers: updateHeaders,
-        redirect: 'follow',
-        signal: AbortSignal.timeout(RELEASE_HISTORY_TIMEOUT_MS)
-      })
-
-      if (!response.ok) {
-        throw new Error(`Release history request failed with HTTP ${response.status}`)
-      }
-
-      const contentLength = Number(response.headers.get('content-length'))
-      if (Number.isFinite(contentLength) && contentLength > RELEASE_HISTORY_MAX_BYTES) {
-        throw new Error('Release history response exceeds the size limit')
-      }
-
-      const source = await response.text()
-      if (Buffer.byteLength(source, 'utf8') > RELEASE_HISTORY_MAX_BYTES) {
-        throw new Error('Release history response exceeds the size limit')
-      }
-
-      return parseReleaseHistory(source)
-    } catch (error) {
-      logger.warn('Failed to fetch release history', error as Error)
-      return null
-    }
-  }
-
-  public async getLatestReleaseNotes(): Promise<ReleaseNotesEntry | null> {
-    try {
-      const { requestedChannel, updateHeaders } = await this.getUpdateRequest()
-      const updater = new ReleaseNotesUpdater()
-      updater.logger = logger as Logger
-      updater.forceDevUpdateConfig = !app.isPackaged
-      updater.autoDownload = false
-      updater.autoInstallOnAppQuit = false
-      updater.requestHeaders = updateHeaders
-      updater.channel = requestedChannel
-      updater.allowDowngrade = false
-
-      const result = await updater.checkForUpdates()
-      if (!result?.isUpdateAvailable) {
-        return null
-      }
-
-      const releaseNotes = result.updateInfo.releaseNotes
-      if (typeof releaseNotes !== 'string' || !releaseNotes.trim()) {
-        return null
-      }
-
-      return { releaseNotes, version: result.updateInfo.version }
-    } catch (error) {
-      logger.warn('Failed to fetch latest release notes', error as Error)
-      return null
-    }
-  }
-
-  public async getReleaseHistory(): Promise<ReleaseNotesEntry[] | null> {
-    const [history, latestRelease] = await Promise.all([this.fetchReleaseHistory(), this.getLatestReleaseNotes()])
-
-    if (!history) {
-      return latestRelease ? [latestRelease] : null
-    }
-
-    return latestRelease ? mergeReleaseHistory([latestRelease], history) : history
   }
 
   public cancelDownload() {

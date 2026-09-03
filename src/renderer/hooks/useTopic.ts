@@ -27,7 +27,6 @@ import {
 import { loggerService } from '@logger'
 import { useCloseConversationTabs } from '@renderer/hooks/tab'
 import { useIpcOn } from '@renderer/ipc'
-import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import type { MessageExportView } from '@renderer/types/messageExport'
 import type { Topic as RendererTopic } from '@renderer/types/topic'
 import { ErrorCode, isDataApiNotFoundError } from '@shared/data/api/errors'
@@ -642,13 +641,6 @@ export function useActiveTopic({
     setPendingTopic(undefined)
     if (!passive) setActiveTopicId(null)
   }, [passive, setActiveTopicId])
-
-  useEffect(() => {
-    if (passive) return
-    if (activeTopic) {
-      void EventEmitter.emit(EVENT_NAMES.CHANGE_TOPIC, activeTopic)
-    }
-  }, [activeTopic, passive])
 
   // Mirror `useActiveSession`: once the topic resolves (from the by-id query or the
   // pending fallback) we are no longer loading, even while a background revalidation runs.

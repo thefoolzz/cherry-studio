@@ -21,7 +21,7 @@ import { useIsActiveTurnTarget } from '@renderer/hooks/useIsActiveTurnTarget'
 import { useTopicStreamStatus } from '@renderer/hooks/useTopicStreamStatus'
 import { FILE_TYPE } from '@renderer/types/file'
 import type { Citation } from '@renderer/types/message'
-import { blobToDataUrl, getImageBlobFromSource } from '@renderer/utils/image'
+import { getImageBlobFromSource } from '@renderer/utils/image'
 import {
   type MessageCitations,
   resolveCitationMarkerParts,
@@ -1465,12 +1465,21 @@ const MessagePartsRendererContent = React.memo(function MessagePartsRendererCont
     }
 
     let cancelled = false
+    const objectUrls: string[] = []
     void Promise.all(
       generatedImageIds.map(async (id) => {
         try {
           const path = await window.api.file.getPhysicalPath({ id })
-          const dataUrl = await getImageBlobFromSource(toSafeFileUrl(path, null)).then(blobToDataUrl)
-          return [id, dataUrl] as const
+          const blob = await getImageBlobFromSource(toSafeFileUrl(path, null))
+          // An object URL keeps the markdown source small; a data URL would inline the whole image and
+          // the parser would re-tokenize megabytes of base64 on every render.
+          const objectUrl = URL.createObjectURL(blob)
+          if (cancelled) {
+            URL.revokeObjectURL(objectUrl)
+            return null
+          }
+          objectUrls.push(objectUrl)
+          return [id, objectUrl] as const
         } catch {
           return null
         }
@@ -1482,6 +1491,8 @@ const MessagePartsRendererContent = React.memo(function MessagePartsRendererCont
 
     return () => {
       cancelled = true
+      for (const objectUrl of objectUrls) URL.revokeObjectURL(objectUrl)
+      objectUrls.length = 0
     }
   }, [generatedImageIds])
   const visibleComposerFileTokens = useMemo(

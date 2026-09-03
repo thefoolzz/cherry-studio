@@ -1,12 +1,7 @@
 import type { UpdateInfo } from 'builder-util-runtime'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { netFetchMock, releaseNotesCheckMock, releaseNotesUpdaterInstances, trackAppUpdateMock } = vi.hoisted(() => ({
-  netFetchMock: vi.fn(),
-  releaseNotesCheckMock: vi.fn(),
-  releaseNotesUpdaterInstances: [] as Array<Record<string, unknown>>,
-  trackAppUpdateMock: vi.fn()
-}))
+const { trackAppUpdateMock } = vi.hoisted(() => ({ trackAppUpdateMock: vi.fn() }))
 
 vi.mock('@logger', () => ({
   loggerService: {
@@ -64,29 +59,10 @@ vi.mock('electron', () => ({
   app: {
     isPackaged: true,
     getVersion: vi.fn(() => '1.0.0')
-  },
-  net: { fetch: netFetchMock }
+  }
 }))
 
 vi.mock('electron-updater', () => {
-  class MockAppUpdater {
-    allowDowngrade = false
-    autoDownload = true
-    autoInstallOnAppQuit = true
-    channel = ''
-    forceDevUpdateConfig = false
-    logger: unknown = null
-    requestHeaders: Record<string, string> = {}
-
-    constructor(public options?: unknown) {
-      releaseNotesUpdaterInstances.push(this as unknown as Record<string, unknown>)
-    }
-
-    checkForUpdates() {
-      return releaseNotesCheckMock()
-    }
-  }
-
   return {
     autoUpdater: {
       logger: null,
@@ -104,7 +80,6 @@ vi.mock('electron-updater', () => {
       disableDifferentialDownload: false,
       currentVersion: '1.0.0'
     },
-    AppUpdater: MockAppUpdater,
     Logger: vi.fn(),
     NsisUpdater: vi.fn()
   }
@@ -112,10 +87,9 @@ vi.mock('electron-updater', () => {
 
 import { application } from '@application'
 import { regionService } from '@main/services/RegionService'
-import { UpgradeChannel } from '@shared/data/preference/preferenceTypes'
 import { APP_NAME } from '@shared/utils/constants'
 import { MockMainPreferenceServiceUtils } from '@test-mocks/main/PreferenceService'
-import { app, net } from 'electron'
+import { app } from 'electron'
 import { autoUpdater } from 'electron-updater'
 
 import { AppUpdaterService } from '../AppUpdaterService'
@@ -126,14 +100,9 @@ describe('AppUpdaterService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     MockMainPreferenceServiceUtils.resetMocks()
-    MockMainPreferenceServiceUtils.setPreferenceValue('app.dist.test_plan.enabled', false)
-    MockMainPreferenceServiceUtils.setPreferenceValue('app.dist.test_plan.channel', UpgradeChannel.LATEST)
     vi.mocked(app.getVersion).mockReturnValue('1.0.0')
     vi.mocked(regionService.getCountry).mockResolvedValue('US')
     vi.mocked(autoUpdater.checkForUpdates).mockResolvedValue(null)
-    netFetchMock.mockReset()
-    releaseNotesCheckMock.mockReset().mockResolvedValue(null)
-    releaseNotesUpdaterInstances.length = 0
     autoUpdater.requestHeaders = {}
     autoUpdater.channel = ''
     autoUpdater.allowDowngrade = false
@@ -145,7 +114,7 @@ describe('AppUpdaterService', () => {
     it('uses the latest channel and global region outside China', async () => {
       await (appUpdater as any).configureUpdaterForCheck()
 
-      expect(autoUpdater.channel).toBe(UpgradeChannel.LATEST)
+      expect(autoUpdater.channel).toBe('latest')
       expect(autoUpdater.requestHeaders).toMatchObject({
         'User-Agent': 'test-user-agent',
         'Cache-Control': 'no-cache',
@@ -182,31 +151,20 @@ describe('AppUpdaterService', () => {
       })
     })
 
-    it.each([
-      ['RC', UpgradeChannel.RC],
-      ['Beta', UpgradeChannel.BETA]
-    ])('requests the %s manifest when that test channel is enabled', async (_label, channel) => {
-      MockMainPreferenceServiceUtils.setPreferenceValue('app.dist.test_plan.enabled', true)
-      MockMainPreferenceServiceUtils.setPreferenceValue('app.dist.test_plan.channel', channel)
-
-      await (appUpdater as any).configureUpdaterForCheck()
-
-      expect(autoUpdater.channel).toBe(channel)
-    })
-
-    it('uses the selected test channel when the installed prerelease came from another channel', async () => {
+    // The packaged app-update.yml of a prerelease build carries channel: rc/beta, so
+    // without the override those installs would keep following the prerelease feed.
+    it('pulls a prerelease install back onto the stable channel', async () => {
       vi.mocked(app.getVersion).mockReturnValue('2.0.0-rc.1')
-      MockMainPreferenceServiceUtils.setPreferenceValue('app.dist.test_plan.enabled', true)
-      MockMainPreferenceServiceUtils.setPreferenceValue('app.dist.test_plan.channel', UpgradeChannel.BETA)
+      autoUpdater.channel = 'rc'
 
       await (appUpdater as any).configureUpdaterForCheck()
 
-      expect(autoUpdater.channel).toBe(UpgradeChannel.BETA)
+      expect(autoUpdater.channel).toBe('latest')
     })
 
     it('applies the channel and request headers before checking for updates', async () => {
       vi.mocked(autoUpdater.checkForUpdates).mockImplementation(async () => {
-        expect(autoUpdater.channel).toBe(UpgradeChannel.LATEST)
+        expect(autoUpdater.channel).toBe('latest')
         expect(autoUpdater.requestHeaders).toMatchObject({
           'App-Version': 'v1.0.0',
           'X-Region': 'global'
@@ -217,80 +175,6 @@ describe('AppUpdaterService', () => {
       await appUpdater.checkForUpdates()
 
       expect(autoUpdater.checkForUpdates).toHaveBeenCalledOnce()
-    })
-
-    it('fetches and validates release history through the managed release service', async () => {
-      vi.mocked(regionService.getCountry).mockResolvedValue('CN')
-      const releaseNotes = '<!--LANG:en-->Remote notes<!--LANG:zh-CN-->远端说明<!--LANG:END-->'
-      const history = [{ releaseNotes, version: '1.1.0' }]
-      netFetchMock.mockResolvedValue(new Response(JSON.stringify(history)))
-
-      await expect(appUpdater.getReleaseHistory()).resolves.toEqual(history)
-
-      expect(net.fetch).toHaveBeenCalledWith(
-        'https://github.com/thefoolzz/cherry-studio/releases/latest/download/release-history.json',
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            'App-Version': 'v1.0.0',
-            'X-Region': 'cn'
-          }),
-          redirect: 'follow',
-          signal: expect.any(AbortSignal)
-        })
-      )
-      expect(releaseNotesUpdaterInstances).toHaveLength(1)
-    })
-
-    it('merges a newer channel release with stable release history', async () => {
-      const stableNotes = '<!--LANG:en-->Stable notes<!--LANG:zh-CN-->稳定版说明<!--LANG:END-->'
-      const rcNotes = '<!--LANG:en-->RC notes<!--LANG:zh-CN-->测试版说明<!--LANG:END-->'
-      netFetchMock.mockResolvedValue(new Response(JSON.stringify([{ releaseNotes: stableNotes, version: '1.1.0' }])))
-      releaseNotesCheckMock.mockResolvedValue({
-        isUpdateAvailable: true,
-        updateInfo: { releaseNotes: rcNotes, version: '1.2.0-rc.1' }
-      })
-
-      await expect(appUpdater.getReleaseHistory()).resolves.toEqual([
-        { releaseNotes: rcNotes, version: '1.2.0-rc.1' },
-        { releaseNotes: stableNotes, version: '1.1.0' }
-      ])
-    })
-
-    it('keeps newer updater notes when release history is unavailable', async () => {
-      netFetchMock.mockRejectedValue(new Error('offline'))
-      releaseNotesCheckMock.mockResolvedValue({
-        isUpdateAvailable: true,
-        updateInfo: { releaseNotes: 'New release notes', version: '1.1.0' }
-      })
-
-      await expect(appUpdater.getReleaseHistory()).resolves.toEqual([
-        { releaseNotes: 'New release notes', version: '1.1.0' }
-      ])
-    })
-
-    it('falls back to bundled history when the managed response is invalid', async () => {
-      netFetchMock.mockResolvedValue(new Response(JSON.stringify([{ releaseNotes: 'English only', version: '1.1.0' }])))
-
-      await expect(appUpdater.getReleaseHistory()).resolves.toBeNull()
-    })
-
-    it('falls back to bundled history when the managed request fails', async () => {
-      netFetchMock.mockRejectedValue(new Error('offline'))
-
-      await expect(appUpdater.getReleaseHistory()).resolves.toBeNull()
-    })
-
-    it('rejects release history larger than the response limit before reading it', async () => {
-      const text = vi.fn()
-      netFetchMock.mockResolvedValue({
-        headers: new Headers({ 'content-length': String(1024 * 1024 + 1) }),
-        ok: true,
-        status: 200,
-        text
-      })
-
-      await expect(appUpdater.getReleaseHistory()).resolves.toBeNull()
-      expect(text).not.toHaveBeenCalled()
     })
   })
 

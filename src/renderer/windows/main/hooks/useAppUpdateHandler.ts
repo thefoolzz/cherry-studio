@@ -73,7 +73,7 @@ export function useAppUpdateHandler() {
       import('@renderer/components/UpdateDialogPopup')
         .then(({ default: UpdateDialogPopup }) => UpdateDialogPopup.show({ releaseInfo }))
         .catch((error) => {
-          // Update state stays `downloaded` — AboutSettings' static entry
+          // Update state stays `downloaded` — the settings entry
           // still lets the user open the dialog and install.
           logger.error('Failed to load UpdateDialogPopup chunk:', error as Error)
         })
@@ -88,7 +88,7 @@ export function useAppUpdateHandler() {
       manualCheck: false
     })
     // AppUpdaterService swallows updater failures after broadcasting UpdateError, so
-    // AboutSettings.onCheckUpdate never sees them — surface it here for manual checks.
+    // UpdateSettings.onCheckUpdate never sees them — surface it here for manual checks.
     if (manualCheckRef.current) {
       void popup.info({
         title: t('settings.about.updateError'),

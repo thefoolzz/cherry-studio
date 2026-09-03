@@ -60,6 +60,10 @@ export const messageTable = sqliteTable(
     // Indexes
     index('message_parent_id_idx').on(t.parentId),
     index('message_topic_created_idx').on(t.topicId, t.createdAt),
+    // Backs the batched siblings lookup in getBranchMessages, which ORs one
+    // (topic_id, parent_id, siblings_group_id) triple per group on the page. Without it
+    // siblings_group_id is unindexed and SQLite can only OR-decompose on parent_id.
+    index('message_topic_parent_siblings_idx').on(t.topicId, t.parentId, t.siblingsGroupId),
     // Backs findPendingAssistantMessageIds (boot reconcile); without it that lookup full-SCANs.
     // Plain, not partial — Drizzle binds `status = ?`, which SQLite can't match to a partial index.
     index('message_status_idx').on(t.status),

@@ -1,4 +1,4 @@
-import { Flex, InfoTooltip, Input, Switch } from '@cherrystudio/ui'
+import { Button, Flex, InfoTooltip, Input, Switch } from '@cherrystudio/ui'
 import { useMultiplePreferences, usePreference } from '@data/hooks/usePreference'
 import CopyButton from '@renderer/components/CopyButton'
 import Selector from '@renderer/components/Selector'
@@ -12,15 +12,18 @@ import {
 } from '@renderer/components/SettingsPrimitives'
 import { useTheme } from '@renderer/hooks/useTheme'
 import { useTimer } from '@renderer/hooks/useTimer'
+import { ipcApi } from '@renderer/ipc'
 import { popup } from '@renderer/services/popup'
 import { toast } from '@renderer/services/toast'
 import { formatErrorMessage } from '@renderer/utils/error'
 import { isValidProxyUrl } from '@renderer/utils/url'
 import type { FC } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ContextManagementSettings } from './ContextManagementSettings'
+import DiagnosticBundleDialog from './DiagnosticBundleDialog'
+import { UpdateSettings } from './UpdateSettings'
 
 const defaultByPassRules = 'localhost,127.0.0.1,::1'
 
@@ -52,6 +55,12 @@ const GeneralSettings: FC = () => {
 
   const [proxyUrl, setProxyUrl] = useState<string>(storeProxyUrl)
   const [proxyBypassRules, setProxyBypassRules] = useState<string>(storeProxyBypassRules)
+  const [appVersion, setAppVersion] = useState('')
+  const [isDiagnosticDialogOpen, setIsDiagnosticDialogOpen] = useState(false)
+
+  useEffect(() => {
+    void ipcApi.request('app.get_info').then((info) => setAppVersion(info.version))
+  }, [])
 
   const proxyModeOptions: { value: 'system' | 'custom' | 'none'; label: string }[] = [
     { value: 'system', label: t('settings.proxy.mode.system') },
@@ -118,6 +127,8 @@ const GeneralSettings: FC = () => {
 
   return (
     <SettingsContentColumn theme={theme}>
+      <UpdateSettings />
+
       <SettingGroup theme={theme}>
         <SettingTitle>{t('settings.launch.title')}</SettingTitle>
         <SettingDivider />
@@ -238,7 +249,26 @@ const GeneralSettings: FC = () => {
             </SettingRow>
           </>
         ) : null}
+        <SettingDivider />
+        <SettingRow>
+          <SettingRowTitle>{t('settings.about.diagnostics.entry.title')}</SettingRowTitle>
+          <Button size="sm" variant="outline" onClick={() => setIsDiagnosticDialogOpen(true)}>
+            {t('settings.about.diagnostics.entry.button')}
+          </Button>
+        </SettingRow>
+        <SettingDivider />
+        <SettingRow>
+          <SettingRowTitle>{t('settings.about.debug.title')}</SettingRowTitle>
+          <Button size="sm" variant="outline" onClick={() => void ipcApi.request('system.toggle_dev_tools')}>
+            {t('settings.about.debug.open')}
+          </Button>
+        </SettingRow>
       </SettingGroup>
+      <DiagnosticBundleDialog
+        appVersion={appVersion}
+        open={isDiagnosticDialogOpen}
+        onOpenChange={setIsDiagnosticDialogOpen}
+      />
     </SettingsContentColumn>
   )
 }
