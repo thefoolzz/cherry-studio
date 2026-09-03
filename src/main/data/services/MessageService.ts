@@ -693,27 +693,29 @@ export class MessageService {
       return { items: [], nextCursor: undefined, activeNodeId: null, assistantId: topic.assistantId, rootId }
     }
 
-    const fullPath = this.getPathRowsToNodeTx(db, nodeId, { topicId })
+    const pathIds = this.getPathIdsToNodeTx(db, nodeId, { topicId })
 
     // Apply pagination
     let startIndex = 0
-    let endIndex = fullPath.length
+    let endIndex = pathIds.length
 
     if (cursor) {
-      const cursorIndex = fullPath.findIndex((m) => m.id === cursor)
+      const cursorIndex = pathIds.indexOf(cursor)
       if (cursorIndex === -1) {
         throw DataApiErrorFactory.notFound('Message (cursor)', cursor)
       }
       startIndex = Math.max(0, cursorIndex - limit)
       endIndex = cursorIndex
     } else {
-      startIndex = Math.max(0, fullPath.length - limit)
+      startIndex = Math.max(0, pathIds.length - limit)
     }
 
-    const paginatedPath = fullPath.slice(startIndex, endIndex)
+    // Only the requested window is materialized; a long branch would otherwise parse every
+    // message payload on it just to return one page.
+    const paginatedPath = this.getRowsByIdsInOrderTx(db, pathIds.slice(startIndex, endIndex), topicId)
 
     // Calculate nextCursor: if there are more historical messages
-    const nextCursor = startIndex > 0 ? fullPath[startIndex].id : undefined
+    const nextCursor = startIndex > 0 ? pathIds[startIndex] : undefined
 
     // Build result with optional siblings
     const result: BranchMessage[] = []
@@ -2155,10 +2157,17 @@ export class MessageService {
    * the same-topic message-tree invariant.
    */
   getPathRowsToNodeTx(tx: DbOrTx, nodeId: string, options: { topicId?: string } = {}): MessageRow[] {
-    // Recursive CTE collects ancestor IDs (single-column, casing-safe);
-    // full rows fetched via ORM for camelCase mapping.
-    const ancestorIdRows = options.topicId
-      ? tx.all<{ id: string }>(sql`
+    return this.getRowsByIdsInOrderTx(tx, this.getPathIdsToNodeTx(tx, nodeId, options), options.topicId)
+  }
+
+  /**
+   * Ordered message ids on the root → node path, with the content-less virtual root dropped.
+   * Pagination and cursor lookups only need ids, so they must not pull message payloads.
+   */
+  getPathIdsToNodeTx(tx: DbOrTx, nodeId: string, options: { topicId?: string } = {}): string[] {
+    // Recursive CTE collects ancestors (single-column, casing-safe) from the node upwards.
+    const ancestorRows = options.topicId
+      ? tx.all<{ id: string; parent_id: string | null }>(sql`
           WITH RECURSIVE ancestors AS (
             SELECT id, parent_id FROM message
             WHERE id = ${nodeId} AND topic_id = ${options.topicId} AND deleted_at IS NULL
@@ -2167,9 +2176,9 @@ export class MessageService {
             INNER JOIN ancestors a ON m.id = a.parent_id
             WHERE m.topic_id = ${options.topicId} AND m.deleted_at IS NULL
           )
-          SELECT id FROM ancestors
+          SELECT id, parent_id FROM ancestors
         `)
-      : tx.all<{ id: string }>(sql`
+      : tx.all<{ id: string; parent_id: string | null }>(sql`
           WITH RECURSIVE ancestors AS (
             SELECT id, parent_id FROM message WHERE id = ${nodeId} AND deleted_at IS NULL
             UNION ALL
@@ -2177,28 +2186,30 @@ export class MessageService {
             INNER JOIN ancestors a ON m.id = a.parent_id
             WHERE m.deleted_at IS NULL
           )
-          SELECT id FROM ancestors
+          SELECT id, parent_id FROM ancestors
         `)
 
-    if (ancestorIdRows.length === 0) {
+    if (ancestorRows.length === 0) {
       throw DataApiErrorFactory.notFound('Message', nodeId)
     }
 
-    const ancestorIds = ancestorIdRows.map((r) => r.id)
-    const whereClause = options.topicId
-      ? and(inArray(messageTable.id, ancestorIds), eq(messageTable.topicId, options.topicId))
-      : inArray(messageTable.id, ancestorIds)
-    const ancestorRows = tx.select().from(messageTable).where(whereClause).all()
+    // The CTE yields nodeId → root; content paths start at the first-turn message, not the
+    // content-less structural root (the only parentId-null row).
+    const chain = ancestorRows.reverse()
+    return (chain[0]?.parent_id === null ? chain.slice(1) : chain).map((row) => row.id)
+  }
 
-    // Preserve CTE order (nodeId → root) before reversing to root → nodeId.
-    const ancestorOrder = new Map(ancestorIds.map((id, i) => [id, i]))
-    const ordered = ancestorRows.sort((a, b) => ancestorOrder.get(a.id)! - ancestorOrder.get(b.id)!)
+  /** Fetch full rows for `ids`, returned in the order `ids` gives. */
+  private getRowsByIdsInOrderTx(tx: DbOrTx, ids: string[], topicId?: string): MessageRow[] {
+    if (ids.length === 0) return []
 
-    // root → node order, with the structural virtual root (the only parentId-null
-    // row) dropped: content paths start at the first-turn message, not the
-    // content-less root.
-    const chain = ordered.reverse()
-    return chain[0]?.parentId === null ? chain.slice(1) : chain
+    const whereClause = topicId
+      ? and(inArray(messageTable.id, ids), eq(messageTable.topicId, topicId))
+      : inArray(messageTable.id, ids)
+    const rows = tx.select().from(messageTable).where(whereClause).all()
+    const order = new Map(ids.map((id, index) => [id, index]))
+
+    return rows.sort((a, b) => order.get(a.id)! - order.get(b.id)!)
   }
 
   /**
