@@ -1,8 +1,24 @@
 import { preferenceTable } from '@data/db/schemas/preference'
 import { DefaultPreferences } from '@shared/data/preference/preferenceSchemas'
+import { and, eq } from 'drizzle-orm'
 
 import type { DbType, ISeeder } from '../../types'
 import { hashObject } from '../hashObject'
+
+const SIDEBAR_FAVORITES_KEY = 'ui.sidebar.favorites'
+
+const isUntouchedChatOnlySidebar = (preference: typeof preferenceTable.$inferSelect): boolean => {
+  const value = preference.value
+  return (
+    preference.scope === 'default' &&
+    preference.key === SIDEBAR_FAVORITES_KEY &&
+    preference.createdAt === preference.updatedAt &&
+    Array.isArray(value) &&
+    value.length === 1 &&
+    value[0]?.id === 'assistants' &&
+    value[0]?.type === 'app'
+  )
+}
 
 export class PreferenceSeeder implements ISeeder {
   readonly name = 'preference'
@@ -15,6 +31,13 @@ export class PreferenceSeeder implements ISeeder {
 
   run(db: DbType): void {
     const preferences = db.select().from(preferenceTable).all()
+
+    if (preferences.some(isUntouchedChatOnlySidebar)) {
+      db.update(preferenceTable)
+        .set({ value: DefaultPreferences.default[SIDEBAR_FAVORITES_KEY] })
+        .where(and(eq(preferenceTable.scope, 'default'), eq(preferenceTable.key, SIDEBAR_FAVORITES_KEY)))
+        .run()
+    }
 
     // Convert existing preferences to a Map for quick lookup
     const existingPrefs = new Map(preferences.map((p) => [`${p.scope}.${p.key}`, p]))

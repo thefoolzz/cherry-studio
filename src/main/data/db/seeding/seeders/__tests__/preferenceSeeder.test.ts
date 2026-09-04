@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 
 describe('PreferenceSeeder', () => {
   const dbh = setupTestDatabase()
+  const sidebarKey = 'ui.sidebar.favorites'
   const toolbarKey = 'chat.input.toolbar.pinned_tools'
 
   it('should insert all default preferences into empty table', async () => {
@@ -65,6 +66,45 @@ describe('PreferenceSeeder', () => {
 
     const after = (await dbh.db.select().from(preferenceTable)).length
     expect(after).toBe(before)
+  })
+
+  it('restores built-in apps for the untouched chat-only sidebar default', () => {
+    dbh.db
+      .insert(preferenceTable)
+      .values({
+        scope: 'default',
+        key: sidebarKey,
+        value: [{ id: 'assistants', type: 'app' }],
+        createdAt: 1,
+        updatedAt: 1
+      })
+      .run()
+
+    new PreferenceSeeder().run(dbh.db)
+
+    const [sidebar] = dbh.db
+      .select()
+      .from(preferenceTable)
+      .where(and(eq(preferenceTable.scope, 'default'), eq(preferenceTable.key, sidebarKey)))
+      .all()
+    expect(sidebar.value).toEqual(DefaultPreferences.default[sidebarKey])
+  })
+
+  it('preserves a user-modified chat-only sidebar', () => {
+    const userSidebar = [{ id: 'assistants', type: 'app' }]
+    dbh.db
+      .insert(preferenceTable)
+      .values({ scope: 'default', key: sidebarKey, value: userSidebar, createdAt: 1, updatedAt: 2 })
+      .run()
+
+    new PreferenceSeeder().run(dbh.db)
+
+    const [sidebar] = dbh.db
+      .select()
+      .from(preferenceTable)
+      .where(and(eq(preferenceTable.scope, 'default'), eq(preferenceTable.key, sidebarKey)))
+      .all()
+    expect(sidebar.value).toEqual(userSidebar)
   })
 
   it('keeps clear context unpinned in the default chat toolbar', async () => {

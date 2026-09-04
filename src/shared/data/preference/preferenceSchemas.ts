@@ -831,7 +831,16 @@ export const DefaultPreferences: PreferenceSchemas = {
     'ui.custom_css': '',
     'ui.launchpad.app_order': [],
     'ui.navbar.position': 'top',
-    'ui.sidebar.favorites': [{ id: 'assistants', type: 'app' }],
+    'ui.sidebar.favorites': [
+      { id: 'assistants', type: 'app' },
+      { id: 'paintings', type: 'app' },
+      { id: 'translate', type: 'app' },
+      { id: 'mini_app', type: 'app' },
+      { id: 'knowledge', type: 'app' },
+      { id: 'files', type: 'app' },
+      { id: 'code_tools', type: 'app' },
+      { id: 'notes', type: 'app' }
+    ],
     'ui.theme_mode': PreferenceTypes.ThemeMode.system,
     'ui.theme_user.code_font_family': '',
     'ui.theme_user.color_primary': '#00b96b',
